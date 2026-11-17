@@ -44,8 +44,24 @@ Proyecto del curso de Spring Boot con Claude Code.
 3. Levanta PostgreSQL (si no lo tienes instalado, con Docker):
 
    ```bash
-   docker run --name 3-spring-api-db -e POSTGRES_DB=spring_api -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18
+   docker run -d --name 3-spring-api-db --restart unless-stopped -e POSTGRES_DB=spring_api -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18
    ```
+
+   Con `--restart unless-stopped` el contenedor vuelve a levantarse solo si se cae o al reiniciar Docker, salvo que lo hayas detenido tú con `docker stop`.
+
+   Opcional: **pgAdmin** para explorar la base desde el navegador. Comparte una red de Docker con PostgreSQL y trae el servidor ya registrado (`docker/pgadmin/servers.json`):
+
+   ```bash
+   docker network create spring-api-net
+   docker network connect spring-api-net 3-spring-api-db
+   docker run -d --name 3-spring-api-pgadmin --restart unless-stopped --network spring-api-net -p 5050:80 \
+     -e PGADMIN_DEFAULT_EMAIL=admin@example.com -e PGADMIN_DEFAULT_PASSWORD=postgres \
+     -v 3-spring-api-pgadmin-data:/var/lib/pgadmin \
+     -v "$PWD/docker/pgadmin/servers.json:/pgadmin4/servers.json:ro" \
+     dpage/pgadmin4:latest
+   ```
+
+   Entra en http://localhost:5050 con `admin@example.com` / `postgres`. El servidor **3-spring-api (PostgreSQL)** aparece en la lista; al abrirlo pide la contraseña de la base (`DB_PASSWORD`).
 
 4. Ejecuta la aplicación desde la raíz del proyecto:
 
@@ -55,7 +71,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 
    En Windows usa `mvnw.cmd spring-boot:run`.
 
-Hibernate crea la tabla `customers` automáticamente al arrancar (`ddl-auto=update`).
+Hibernate crea la tabla `customers` automáticamente al arrancar (`ddl-auto=update`) y luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed se ejecuta en cada arranque, pero no duplica datos: si un email ya existe, ese cliente se omite.
 
 ## Endpoints
 

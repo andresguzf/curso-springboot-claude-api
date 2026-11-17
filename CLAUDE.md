@@ -21,7 +21,9 @@ Usa siempre el wrapper `./mvnw`.
 ```
 
 - `ApplicationTests` (`@SpringBootTest`) levanta el contexto completo y **falla sin PostgreSQL**. Para probar la capa web sin base de datos usa `@WebMvcTest` (en Boot 4 está en `org.springframework.boot.webmvc.test.autoconfigure`) con `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).
-- PostgreSQL local con Docker: `docker run --name 3-spring-api-db -e POSTGRES_DB=spring_api -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:18`
+- PostgreSQL local con Docker (contenedor `3-spring-api-db`, se reinicia solo salvo `docker stop`): `docker run -d --name 3-spring-api-db --restart unless-stopped -e POSTGRES_DB=spring_api -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`
+- Consultar la base: `docker exec -it 3-spring-api-db psql -U postgres -d spring_api`
+- pgAdmin: contenedor `3-spring-api-pgadmin` en http://localhost:5050 (comando completo en el README). Comparte la red `spring-api-net` con PostgreSQL, por eso el host del servidor es `3-spring-api-db` y no `localhost`. El servidor se registra desde `docker/pgadmin/servers.json` **solo la primera vez** que se crea el volumen `3-spring-api-pgadmin-data`; para recargarlo, borra el contenedor y el volumen.
 - Con la app arriba: Swagger UI en `/swagger-ui.html`, health en `/actuator/health`.
 
 ## Configuración
@@ -29,6 +31,7 @@ Usa siempre el wrapper `./mvnw`.
 - `application.properties` importa `.env` de la raíz con `spring.config.import=optional:file:.env[.properties]`; la ruta es relativa al directorio de trabajo, así que la app debe ejecutarse desde la raíz del proyecto.
 - Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (con valores por defecto genéricos de desarrollo). `.env` está en `.gitignore`; la plantilla versionada es `.env.example`.
 - `spring.jpa.hibernate.ddl-auto=update`: el esquema lo crea Hibernate a partir de las entities (no hay Flyway).
+- Seed: `src/main/resources/data.sql` inserta 20 clientes en cada arranque (`spring.sql.init.mode=always` + `spring.jpa.defer-datasource-initialization=true`, para que corra después de que Hibernate cree las tablas). Es idempotente con `ON CONFLICT (email) DO NOTHING`. Usa nombres de **columna** (`last_name`, `created_at`, `update_at`) y asigna `created_at` a mano, porque `@PrePersist` no corre en SQL directo: si cambias columnas de la entity, actualiza el seed o la app no arranca.
 
 ## Arquitectura
 

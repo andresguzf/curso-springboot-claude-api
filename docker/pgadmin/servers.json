@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "3-spring-api (PostgreSQL)",
+      "Group": "Servers",
+      "Host": "3-spring-api-db",
+      "Port": 5432,
+      "MaintenanceDB": "spring_api",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
