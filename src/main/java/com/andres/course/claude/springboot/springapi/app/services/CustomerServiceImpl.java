@@ -6,6 +6,9 @@ import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotF
 import com.andres.course.claude.springboot.springapi.app.mappers.CustomerMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
 import com.andres.course.claude.springboot.springapi.app.repositories.CustomerRepository;
+import com.andres.course.claude.springboot.springapi.app.repositories.CustomerSpecifications;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +27,11 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CustomerDto> findAll() {
-        return customerRepository.findAll()
+    public List<CustomerDto> findAll(String search, Boolean active) {
+        Specification<Customer> filters = Specification.allOf(
+                CustomerSpecifications.matches(search),
+                CustomerSpecifications.hasActive(active));
+        return customerRepository.findAll(filters, Sort.by("id"))
                 .stream()
                 .map(customerMapper::toDto)
                 .toList();

@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,6 +51,40 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
                 "El dato ya está en uso o viola una restricción de la base de datos");
         problem.setTitle("Conflicto de datos");
+        return problem;
+    }
+
+    // 401: login fallido. BadCredentialsException, DisabledException, etc. responden con el mismo
+    // mensaje genérico para no revelar si el email existe o si la cuenta está deshabilitada.
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED,
+                "Email o contraseña incorrectos");
+        problem.setTitle("No autenticado");
+        return problem;
+    }
+
+    // 401: refresh token ausente, vencido, revocado o reutilizado.
+    @ExceptionHandler(InvalidTokenException.class)
+    public ProblemDetail handleInvalidToken(InvalidTokenException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Token inválido");
+        return problem;
+    }
+
+    // 409: la operación viola una regla de negocio (p. ej. un admin que se borra a sí mismo).
+    @ExceptionHandler(OperationNotAllowedException.class)
+    public ProblemDetail handleOperationNotAllowed(OperationNotAllowedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Operación no permitida");
+        return problem;
+    }
+
+    // 400: dato inválido detectado por el service (p. ej. crear un usuario sin contraseña).
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Solicitud inválida");
         return problem;
     }
 

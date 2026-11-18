@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,8 +30,9 @@ public class CustomerController {
         this.customerService = customerService;
     }
 
-    // GET /api/customers -> 200 con la lista de clientes.
-    // Content negotiation (Accept o ?format=): JSON por defecto, XML, CSV, Excel o PDF.
+    // GET /api/customers -> 200 con la lista de clientes (roles USER y ADMIN).
+    // Filtros opcionales: ?search=texto (nombre, apellido, email o ciudad) y ?active=true|false.
+    // Content negotiation (Accept o ?format=): JSON por defecto, XML, CSV, Excel o PDF; exporta el resultado filtrado.
     @GetMapping(produces = {
             MediaType.APPLICATION_JSON_VALUE,
             MediaType.APPLICATION_XML_VALUE,
@@ -38,8 +40,9 @@ public class CustomerController {
             ExportMediaTypes.XLSX_VALUE,
             MediaType.APPLICATION_PDF_VALUE
     })
-    public List<CustomerDto> findAll() {
-        return customerService.findAll();
+    public List<CustomerDto> findAll(@RequestParam(required = false) String search,
+                                     @RequestParam(required = false) Boolean active) {
+        return customerService.findAll(search, active);
     }
 
     // GET /api/customers/{id} -> 200, o 404 si no existe.
@@ -53,6 +56,7 @@ public class CustomerController {
         return customerService.findById(id);
     }
 
+    // Escritura: solo rol ADMIN (ver SecurityConfig).
     // POST /api/customers -> 201 + cabecera Location; 400 si falla la validación, 409 si el email ya existe.
     @PostMapping
     public ResponseEntity<CustomerDto> create(@Valid @RequestBody CustomerDto dto) {

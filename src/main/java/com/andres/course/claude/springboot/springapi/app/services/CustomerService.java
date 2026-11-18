@@ -6,7 +6,13 @@ import java.util.List;
 
 public interface CustomerService {
 
-    List<CustomerDto> findAll();
+    /**
+     * Lista los clientes ordenados por id, con filtros opcionales.
+     *
+     * @param search texto a buscar en nombre, apellido, email o ciudad (null o vacío: sin filtro)
+     * @param active estado del cliente (null: todos)
+     */
+    List<CustomerDto> findAll(String search, Boolean active);
 
     CustomerDto findById(Long id);
 

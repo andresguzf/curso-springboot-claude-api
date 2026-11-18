@@ -1,6 +1,6 @@
 # API REST de clientes con Spring Boot
 
-API REST para gestionar clientes (`Customer`) construida con Spring Boot 4, Spring Data JPA y PostgreSQL, con validación de datos y manejo de errores en formato estándar `ProblemDetail` (RFC 9457).
+API REST para gestionar clientes (`Customer`) construida con Spring Boot 4, Spring Data JPA y PostgreSQL, con validación de datos, manejo de errores en formato estándar `ProblemDetail` (RFC 9457) y seguridad con **Spring Security + JWT en cookies HttpOnly**, usuarios y roles.
 
 Proyecto del curso de Spring Boot con Claude Code.
 
@@ -9,6 +9,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 - Java 25
 - Spring Boot 4.1.2 (Spring Web MVC, Validation, Actuator, DevTools)
 - Spring Data JPA + Hibernate 7
+- Spring Security 7 + JWT (jjwt) en cookies HttpOnly, con refresh token y protección CSRF
 - PostgreSQL
 - springdoc-openapi (Swagger UI)
 - Jackson XML, Apache POI (Excel) y OpenPDF (PDF) para la exportación
@@ -39,6 +40,16 @@ Proyecto del curso de Spring Boot con Claude Code.
    | `DB_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/spring_api` |
    | `DB_USERNAME` | Usuario de la base de datos | `postgres` |
    | `DB_PASSWORD` | Contraseña de la base de datos | `postgres` |
+   | `JWT_SECRET` | Clave HMAC en Base64 (mín. 256 bits) para firmar los JWT. **Obligatoria** | — |
+   | `JWT_COOKIE_SECURE` | Atributo `Secure` de las cookies (`false` para probar con Postman/curl en `http://localhost`) | `true` |
+   | `ADMIN_EMAIL` | Email del administrador inicial | `admin@ejemplo.com` |
+   | `ADMIN_PASSWORD` | Contraseña del administrador inicial (sin ella no se crea) | — |
+
+   Genera la clave del JWT con:
+
+   ```bash
+   openssl rand -base64 32
+   ```
 
    La aplicación lee el `.env` de la raíz del proyecto al arrancar. Este archivo no se sube al repositorio.
 
@@ -72,28 +83,119 @@ Proyecto del curso de Spring Boot con Claude Code.
 
    En Windows usa `mvnw.cmd spring-boot:run`.
 
-Hibernate crea la tabla `customers` automáticamente al arrancar (`ddl-auto=update`) y luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
+Hibernate crea las tablas `customers`, `users` y `refresh_tokens` automáticamente al arrancar (`ddl-auto=update`). Si no existe un usuario con `ADMIN_EMAIL`, se crea como administrador con `ADMIN_PASSWORD`. Luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
 
-## Endpoints
+## Seguridad
 
-Base: `http://localhost:8080/api/customers`
+La API usa **JWT en cookies HttpOnly**: el token nunca aparece en el cuerpo de las respuestas ni es accesible desde JavaScript, lo que evita que un script malicioso (XSS) lo robe.
+
+| Cookie | Contenido | Atributos |
+|---|---|---|
+| `access_token` | JWT firmado (HS256) con el email y el rol; dura **15 min** | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/` |
+| `refresh_token` | Token opaco aleatorio; dura **7 días**. En la base solo se guarda su hash SHA-256 | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth` |
+| `XSRF-TOKEN` | Token CSRF, legible por JavaScript | `SameSite=Strict`, `Path=/` |
+
+- **CSRF**: como el navegador envía las cookies solo, todo `POST`/`PUT`/`DELETE` (salvo el login) debe traer la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN`. Un sitio externo no puede leer esa cookie, así que no puede falsificar la petición.
+- **Refresh con rotación**: cada `POST /api/auth/refresh` invalida el refresh token usado y entrega uno nuevo. Si alguien reutiliza un refresh token ya usado (posible robo), se cierran todas las sesiones de ese usuario.
+- Al cambiar el rol, la contraseña o deshabilitar un usuario se revocan sus refresh tokens.
+
+### Roles
+
+| Rol | Clientes | Usuarios |
+|---|---|---|
+| `USER` | Ver, buscar y exportar | — |
+| `ADMIN` | Ver, crear, editar y borrar | Administrar |
+
+Un administrador no puede borrarse, deshabilitarse ni quitarse el rol `ADMIN` a sí mismo (409).
+
+### Autenticación: `/api/auth`
 
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/customers` | Lista todos los clientes | 200 |
+| `GET` | `/api/auth/csrf` | Devuelve el token CSRF (y crea la cookie `XSRF-TOKEN`) | 200 |
+| `POST` | `/api/auth/login` | Inicia sesión con `email` y `password`; pone las cookies | 200 + usuario, 400, 401 |
+| `POST` | `/api/auth/refresh` | Renueva ambos tokens (rotación) | 200, 401, 403 sin CSRF |
+| `POST` | `/api/auth/logout` | Revoca el refresh token y borra las cookies | 204 |
+| `GET` | `/api/auth/me` | Usuario autenticado | 200, 401 |
+
+### Probar con curl
+
+El cookie jar (`-c`/`-b`) guarda las cookies como lo haría el navegador (usa `JWT_COOKIE_SECURE=false` en el `.env`):
+
+```bash
+# 1. Login: guarda access_token, refresh_token y XSRF-TOKEN
+curl -c cookies.txt -H "Content-Type: application/json" \
+  -d '{"email":"admin@ejemplo.com","password":"tu-password"}' \
+  http://localhost:8080/api/auth/login
+
+# 2. Lecturas: basta con enviar las cookies
+curl -b cookies.txt "http://localhost:8080/api/customers?search=santiago"
+
+# 3. Escrituras: además, la cabecera X-XSRF-TOKEN con el valor de la cookie
+XSRF=$(awk '$6=="XSRF-TOKEN"{print $7}' cookies.txt)
+curl -b cookies.txt -c cookies.txt -H "X-XSRF-TOKEN: $XSRF" -H "Content-Type: application/json" \
+  -d '{"email":"lector@ejemplo.com","password":"password123","role":"USER"}' \
+  http://localhost:8080/api/users
+```
+
+En **Swagger UI** basta con ejecutar `POST /api/auth/login` desde "Try it out": el navegador guarda las cookies y Swagger envía la cabecera CSRF automáticamente.
+
+## Endpoints
+
+### Clientes: `/api/customers`
+
+Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
+
+| Método | Ruta | Descripción | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/customers` | Lista los clientes, con filtros opcionales | 200 |
 | `GET` | `/api/customers/{id}` | Obtiene un cliente | 200, 404 |
 | `POST` | `/api/customers` | Crea un cliente | 201 + `Location`, 400, 409 |
 | `PUT` | `/api/customers/{id}` | Actualiza un cliente | 200, 400, 404, 409 |
 | `DELETE` | `/api/customers/{id}` | Elimina un cliente | 204, 404 |
 
+#### Buscador
+
+`GET /api/customers` acepta dos filtros opcionales que se combinan:
+
+- `search`: texto que se busca, sin distinguir mayúsculas, en nombre, apellido, email y ciudad.
+- `active`: `true` o `false` para filtrar por estado.
+
+```bash
+curl -b cookies.txt "http://localhost:8080/api/customers?search=pérez&active=true"
+curl -b cookies.txt -o clientes.csv "http://localhost:8080/api/customers?search=santiago&format=csv"
+```
+
+Los formatos de exportación (CSV, Excel, PDF, XML) exportan el **resultado filtrado**.
+
+### Usuarios: `/api/users` (solo `ADMIN`)
+
+| Método | Ruta | Descripción | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/users` | Lista los usuarios | 200 |
+| `GET` | `/api/users/{id}` | Obtiene un usuario | 200, 404 |
+| `POST` | `/api/users` | Crea un usuario | 201 + `Location`, 400, 409 |
+| `PUT` | `/api/users/{id}` | Actualiza un usuario | 200, 400, 404, 409 |
+| `DELETE` | `/api/users/{id}` | Elimina un usuario | 204, 404, 409 |
+
+| Campo | Obligatorio | Reglas |
+|---|---|---|
+| `email` | Sí | formato email, único, máx. 150 |
+| `password` | Al crear | 8 a 72 caracteres; solo de escritura (nunca sale en las respuestas). Al editar, si no se envía se conserva |
+| `role` | Sí | `USER` o `ADMIN` |
+| `enabled` | No | `true` por defecto; un usuario deshabilitado no puede iniciar sesión |
+
+La contraseña se guarda hasheada con BCrypt.
+
 Documentación interactiva en **Swagger UI**: http://localhost:8080/swagger-ui.html
 
 Estado de la aplicación: http://localhost:8080/actuator/health
 
-### Ejemplo: crear un cliente
+### Ejemplo: crear un cliente (como `ADMIN`)
 
 ```bash
 curl -i -X POST http://localhost:8080/api/customers \
+  -b cookies.txt -H "X-XSRF-TOKEN: $XSRF" \
   -H "Content-Type: application/json" \
   -d '{
         "name": "Ana",
@@ -136,11 +238,11 @@ El listado y el detalle de clientes responden en distintos formatos según lo qu
 Un formato no disponible para ese endpoint responde **406 Not Acceptable**.
 
 ```bash
-curl -H "Accept: application/xml" http://localhost:8080/api/customers
-curl -o clientes.xlsx "http://localhost:8080/api/customers?format=xlsx"
-curl -o clientes.csv  "http://localhost:8080/api/customers?format=csv"
-curl -o clientes.pdf  "http://localhost:8080/api/customers?format=pdf"
-curl -o cliente-1.pdf "http://localhost:8080/api/customers/1?format=pdf"
+curl -b cookies.txt -H "Accept: application/xml" http://localhost:8080/api/customers
+curl -b cookies.txt -o clientes.xlsx "http://localhost:8080/api/customers?format=xlsx"
+curl -b cookies.txt -o clientes.csv  "http://localhost:8080/api/customers?format=csv"
+curl -b cookies.txt -o clientes.pdf  "http://localhost:8080/api/customers?format=pdf"
+curl -b cookies.txt -o cliente-1.pdf "http://localhost:8080/api/customers/1?format=pdf"
 ```
 
 - **CSV**: separado por punto y coma (`;`), el separador que usa Excel con configuración regional en español, en UTF-8 (con BOM para que Excel muestre bien los acentos) y con los mismos nombres de campo que el JSON.
@@ -153,9 +255,12 @@ Todos los errores se responden en formato `ProblemDetail`:
 
 | Situación | Status |
 |---|---|
-| El cliente no existe | 404 Not Found |
+| El cliente o usuario no existe | 404 Not Found |
 | El email ya está registrado | 409 Conflict |
 | Campos inválidos | 400 Bad Request, con el detalle por campo |
+| Sin sesión, token inválido o expirado, login fallido | 401 Unauthorized |
+| Rol sin permiso o falta el token CSRF | 403 Forbidden |
+| Operación no permitida (p. ej. un admin que se borra a sí mismo) | 409 Conflict |
 
 Ejemplo de error de validación:
 
@@ -177,8 +282,9 @@ Ejemplo de error de validación:
 
 ```
 src/main/java/com/andres/course/claude/springboot/springapi/app/
-├── config/        # configuración de Spring MVC (registro de conversores)
-├── controllers/   # endpoints REST
+├── config/        # Spring MVC (conversores), Spring Security, admin inicial, scheduling
+├── controllers/   # endpoints REST (clientes, usuarios, auth)
+├── security/      # JWT, filtro de la cookie, cookies, respuestas 401/403
 ├── converters/    # conversores de exportación: XML, CSV, Excel y PDF
 ├── services/      # lógica de negocio (interfaz + implementación)
 ├── repositories/  # acceso a datos con Spring Data JPA
@@ -194,4 +300,4 @@ src/main/java/com/andres/course/claude/springboot/springapi/app/
 ./mvnw test
 ```
 
-El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible.
+El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto (seguridad de los controllers con `@WebMvcTest`, JWT y refresh tokens) corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`.

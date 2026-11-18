@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Proyecto
 
-API REST de clientes (`Customer`) con Spring Boot 4.1.2, Java 25, Maven, Spring Data JPA + Hibernate 7 y PostgreSQL. Es parte de un curso: el código se muestra en pantalla y se publica en GitHub.
+API REST de clientes (`Customer`) y usuarios (`User`) con Spring Boot 4.1.2, Java 25, Maven, Spring Data JPA + Hibernate 7, PostgreSQL y Spring Security 7 con JWT (jjwt 0.13) en cookies HttpOnly. Es parte de un curso: el código se muestra en pantalla y se publica en GitHub.
 
 Package base: `com.andres.course.claude.springboot.springapi.app` (no lo cambies).
 
@@ -21,6 +21,7 @@ Usa siempre el wrapper `./mvnw`.
 ```
 
 - `ApplicationTests` (`@SpringBootTest`) levanta el contexto completo y **falla sin PostgreSQL**. Para probar la capa web sin base de datos usa `@WebMvcTest` (en Boot 4 está en `org.springframework.boot.webmvc.test.autoconfigure`) con `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).
+- Los `@WebMvcTest` llevan `@Import(SecurityTestConfig.class)` (carga `SecurityConfig` y las clases de `security/`, que el slice no escanea) y `@ActiveProfiles("test")` (`application-test.properties` fija `app.jwt.secret` y `app.jwt.cookie-secure` para no depender del `.env` local). Autentica con una cookie `access_token` real (`TestRequests.accessCookie`) y en escrituras agrega CSRF con `TestRequests.withCsrf` (cookie `XSRF-TOKEN` + cabecera `X-XSRF-TOKEN`).
 - PostgreSQL local con Docker (contenedor `3-spring-api-db`, se reinicia solo salvo `docker stop`): `docker run -d --name 3-spring-api-db --restart unless-stopped -e POSTGRES_DB=spring_api -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`
 - Consultar la base: `docker exec -it 3-spring-api-db psql -U postgres -d spring_api`
 - pgAdmin: contenedor `3-spring-api-pgadmin` en http://localhost:5050 (comando completo en el README). Comparte la red `spring-api-net` con PostgreSQL, por eso el host del servidor es `3-spring-api-db` y no `localhost`. El servidor se registra desde `docker/pgadmin/servers.json` **solo la primera vez** que se crea el volumen `3-spring-api-pgadmin-data`; para recargarlo, borra el contenedor y el volumen.
@@ -29,13 +30,14 @@ Usa siempre el wrapper `./mvnw`.
 ## Configuración
 
 - `application.properties` importa `.env` de la raíz con `spring.config.import=optional:file:.env[.properties]`; la ruta es relativa al directorio de trabajo, así que la app debe ejecutarse desde la raíz del proyecto.
-- Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (con valores por defecto genéricos de desarrollo). `.env` está en `.gitignore`; la plantilla versionada es `.env.example`.
+- Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (con valores por defecto genéricos de desarrollo); `JWT_SECRET` (Base64, ≥ 256 bits, **sin valor por defecto**: la app no arranca sin ella; `openssl rand -base64 32`), `JWT_COOKIE_SECURE` (por defecto `true`; `false` en local para Postman/curl sobre http), `ADMIN_EMAIL` y `ADMIN_PASSWORD` (admin inicial). `.env` está en `.gitignore`; la plantilla versionada es `.env.example`.
+- El admin inicial lo crea `config/AdminUserInitializer` al arrancar si no existe un usuario con `ADMIN_EMAIL` (sin `ADMIN_PASSWORD` solo avisa). No pongas usuarios en `data.sql`: serían contraseñas/hashes versionados.
 - `spring.jpa.hibernate.ddl-auto=update`: el esquema lo crea Hibernate a partir de las entities (no hay Flyway).
 - Seed: `src/main/resources/data.sql` corre en cada arranque (`spring.sql.init.mode=always` + `spring.jpa.defer-datasource-initialization=true`, para que corra después de que Hibernate cree las tablas), pero solo inserta los 20 clientes si la tabla está vacía (`INSERT ... SELECT ... FROM (VALUES ...) WHERE NOT EXISTS`). No uses `ON CONFLICT DO NOTHING`: cada fila descartada igual avanza la secuencia del `id`, y con DevTools reiniciando la app los IDs saltan de a 20. Usa nombres de **columna** (`last_name`, `created_at`, `update_at`) y asigna `created_at` a mano, porque `@PrePersist` no corre en SQL directo: si cambias columnas de la entity, actualiza el seed o la app no arranca.
 
 ## Arquitectura
 
-Capas en packages bajo el package base: `models` → `repositories` → `services` → `controllers`, más `dto`, `mappers`, `exceptions`, `converters` y `config`.
+Capas en packages bajo el package base: `models` → `repositories` → `services` → `controllers`, más `dto`, `mappers`, `exceptions`, `converters`, `security` y `config`.
 
 - Las entities nunca salen del service: el service recibe y devuelve solo DTOs y usa un `Mapper` (`@Component`, mapeo a mano con `toDto`, `toEntity`, `updateEntity`).
 - Un único `record` DTO por recurso, para request y response, con Bean Validation y `message` en español. No incluye las fechas de auditoría.
@@ -69,3 +71,19 @@ Reglas clave de la skill en este proyecto:
 - Al agregar un recurso, crea el conjunto completo: entity, record DTO, mapper, repository, service + impl y controller REST.
 - Al agregar un campo a una entity, actualiza en el mismo cambio el DTO (si no es sensible) y el mapper (`toDto`, `toEntity`, `updateEntity`).
 - Para ejecutar la aplicación localmente usa siempre: `./mvnw -DskipTests spring-boot:run`.
+
+## Seguridad
+
+- Stateless, sin sesión HTTP. `security/JwtAuthenticationFilter` lee la cookie `access_token` (JWT HS256 con `sub` = email y claim `role`, 15 min) y autentica sin ir a la BD. Si el token es inválido o expiró **no corta la petición**: sigue anónima y el `ProblemDetailAuthenticationEntryPoint` responde 401 solo en rutas protegidas (así login/refresh funcionan con una cookie vencida).
+- El filtro **no es `@Component`**: se crea con `new` en `config/SecurityConfig`; como bean, Boot lo registraría también como filtro de servlet y correría dos veces.
+- Los 401/403 de los filtros no pasan por `GlobalExceptionHandler`: los escriben `ProblemDetailAuthenticationEntryPoint` y `ProblemDetailAccessDeniedHandler` vía `ProblemDetailResponseWriter` (Jackson 3 + `ProblemDetailJacksonMixin`). Los errores de login (`AuthenticationException`) sí llegan al advice: 401 con mensaje genérico para no revelar si el email existe.
+- Reglas de acceso en `SecurityConfig` (no `@PreAuthorize`): `GET /api/customers/**` → USER/ADMIN; resto de `/api/customers/**` y `/api/users/**` → ADMIN; públicos login, refresh, logout, `GET /api/auth/csrf`, Swagger, `/actuator/health`, `/error`.
+- CSRF activo con `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `CsrfTokenRequestAttributeHandler` con `setCsrfRequestAttributeName(null)` (token sin XOR y cargado en cada petición: la cookie `XSRF-TOKEN` sale desde la primera respuesta, incluido el login). Solo el login está exento. Swagger lo envía solo (`springdoc.swagger-ui.csrf.enabled=true`).
+- Cookies en `security/AuthCookies`: `HttpOnly`, `SameSite=Strict`, `Secure` configurable; `refresh_token` con `Path=/api/auth`. En `AuthController` se agregan con `response.addHeader(SET_COOKIE, ...)`, **no** con `ResponseEntity.header(...)`: esas cabeceras reemplazan los `Set-Cookie` que ya escribió Spring Security y se pierde la cookie `XSRF-TOKEN`.
+- Refresh token (`RefreshTokenServiceImpl`): opaco de 256 bits, en `refresh_tokens` solo su hash SHA-256; rotación en cada `/refresh` y detección de reuso (un token revocado que vuelve → se revocan todos los del usuario). `rotate` y `AuthServiceImpl.refresh` llevan `noRollbackFor = InvalidTokenException.class` para que esa revocación no se deshaga al lanzar la excepción. La limpieza diaria (`@Scheduled`) borra solo los **vencidos**: los revocados se conservan para poder detectar reusos. FK a `users` con `ON DELETE CASCADE` (`@OnDelete`).
+- `UserServiceImpl` revoca los refresh tokens al cambiar rol, contraseña o deshabilitar, y un admin no puede borrarse, deshabilitarse ni quitarse el rol ADMIN (`OperationNotAllowedException` → 409). Recibe el email del usuario actual como parámetro desde el controller (`Authentication#getName`).
+- `jjwt-jackson` trae Jackson 2 (`com.fasterxml.jackson.databind`) solo para uso interno de jjwt; Spring MVC sigue con Jackson 3.
+
+## Buscador de clientes
+
+`GET /api/customers?search=&active=` con `repositories/CustomerSpecifications` (`JpaSpecificationExecutor`), no `@Query` con `(:param is null or ...)`, que en PostgreSQL falla con parámetros nulos. `search` usa `LIKE` en minúsculas sobre `name`, `lastName`, `email` y `city`, escapando `%` y `_`. Como comparte endpoint con la exportación, CSV/Excel/PDF/XML exportan el resultado filtrado.
