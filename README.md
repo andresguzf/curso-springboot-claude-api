@@ -112,10 +112,10 @@ Campos del cliente:
 | `name` | Sí | máx. 80 caracteres |
 | `lastName` | Sí | máx. 80 caracteres |
 | `email` | Sí | formato email, único, máx. 150 |
-| `phone` | No | máx. 30 |
-| `address` | No | máx. 200 |
-| `city` | No | máx. 80 |
-| `birthDate` | No | fecha pasada (`yyyy-MM-dd`) |
+| `phone` | Sí | máx. 30 |
+| `address` | Sí | máx. 200 |
+| `city` | Sí | máx. 80 |
+| `birthDate` | Sí | fecha pasada (`yyyy-MM-dd`) |
 | `active` | No | `true` por defecto |
 
 Las fechas de creación y edición las asigna el sistema y no se envían en el JSON.

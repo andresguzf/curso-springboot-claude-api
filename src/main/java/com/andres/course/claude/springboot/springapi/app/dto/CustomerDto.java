@@ -2,6 +2,7 @@ package com.andres.course.claude.springboot.springapi.app.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
@@ -27,15 +28,19 @@ public record CustomerDto(
         @Size(max = 150, message = "El email no puede superar los {max} caracteres")
         String email,
 
+        @NotBlank(message = "El teléfono es obligatorio")
         @Size(max = 30, message = "El teléfono no puede superar los {max} caracteres")
         String phone,
 
+        @NotBlank(message = "La dirección es obligatoria")
         @Size(max = 200, message = "La dirección no puede superar los {max} caracteres")
         String address,
-
+                        
+        @NotBlank(message = "La ciudad es obligatoria")
         @Size(max = 80, message = "La ciudad no puede superar los {max} caracteres")
         String city,
-
+                        
+        @NotNull(message = "La fecha de nacimiento es obligatoria")
         @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
         LocalDate birthDate,
 
