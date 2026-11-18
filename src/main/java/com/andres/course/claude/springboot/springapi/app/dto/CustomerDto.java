@@ -6,12 +6,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
+import com.fasterxml.jackson.annotation.JsonRootName;
+
 import java.time.LocalDate;
 
 /**
  * DTO único de Customer para request y response.
  * No incluye las fechas de auditoría (createdAt / updatedAt): las maneja el sistema.
+ * En XML se escribe como <customer>.
  */
+@JsonRootName("customer")
 public record CustomerDto(
         Long id,
 

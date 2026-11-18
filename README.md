@@ -11,6 +11,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 - Spring Data JPA + Hibernate 7
 - PostgreSQL
 - springdoc-openapi (Swagger UI)
+- Jackson XML, Apache POI (Excel) y OpenPDF (PDF) para la exportación
 - Maven (con Maven Wrapper)
 
 ## Requisitos
@@ -71,7 +72,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 
    En Windows usa `mvnw.cmd spring-boot:run`.
 
-Hibernate crea la tabla `customers` automáticamente al arrancar (`ddl-auto=update`) y luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed se ejecuta en cada arranque, pero no duplica datos: si un email ya existe, ese cliente se omite.
+Hibernate crea la tabla `customers` automáticamente al arrancar (`ddl-auto=update`) y luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
 
 ## Endpoints
 
@@ -120,6 +121,32 @@ Campos del cliente:
 
 Las fechas de creación y edición las asigna el sistema y no se envían en el JSON.
 
+## Formatos de exportación (content negotiation)
+
+El listado y el detalle de clientes responden en distintos formatos según lo que pida el cliente HTTP. **JSON es el formato por defecto.** El formato se elige con la cabecera `Accept` o con el parámetro `?format=` (útil para descargar desde el navegador).
+
+| Formato | `Accept` | `?format=` | Listado `/api/customers` | Detalle `/api/customers/{id}` |
+|---|---|---|---|---|
+| JSON | `application/json` | `json` | ✅ (por defecto) | ✅ (por defecto) |
+| XML | `application/xml` | `xml` | ✅ `<customers><customer>…` | ✅ `<customer>…` |
+| CSV | `text/csv` | `csv` | ✅ descarga `clientes.csv` | — |
+| Excel | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | `xlsx` | ✅ descarga `clientes.xlsx` | — |
+| PDF | `application/pdf` | `pdf` | ✅ `clientes.pdf` (tabla horizontal) | ✅ ficha `cliente-{id}.pdf` |
+
+Un formato no disponible para ese endpoint responde **406 Not Acceptable**.
+
+```bash
+curl -H "Accept: application/xml" http://localhost:8080/api/customers
+curl -o clientes.xlsx "http://localhost:8080/api/customers?format=xlsx"
+curl -o clientes.csv  "http://localhost:8080/api/customers?format=csv"
+curl -o clientes.pdf  "http://localhost:8080/api/customers?format=pdf"
+curl -o cliente-1.pdf "http://localhost:8080/api/customers/1?format=pdf"
+```
+
+- **CSV**: separado por punto y coma (`;`), el separador que usa Excel con configuración regional en español, en UTF-8 (con BOM para que Excel muestre bien los acentos) y con los mismos nombres de campo que el JSON.
+- **Excel**: hoja *Clientes* con encabezado fijo, autofiltro y fechas como celdas de fecha.
+- **PDF**: diseño minimalista; el listado es una tabla con todas las columnas y el detalle es una ficha con todos los datos del cliente, su estado y su edad.
+
 ## Manejo de errores
 
 Todos los errores se responden en formato `ProblemDetail`:
@@ -150,7 +177,9 @@ Ejemplo de error de validación:
 
 ```
 src/main/java/com/andres/course/claude/springboot/springapi/app/
+├── config/        # configuración de Spring MVC (registro de conversores)
 ├── controllers/   # endpoints REST
+├── converters/    # conversores de exportación: XML, CSV, Excel y PDF
 ├── services/      # lógica de negocio (interfaz + implementación)
 ├── repositories/  # acceso a datos con Spring Data JPA
 ├── models/        # entidades JPA

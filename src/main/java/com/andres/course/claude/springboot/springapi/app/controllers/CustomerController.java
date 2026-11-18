@@ -1,8 +1,10 @@
 package com.andres.course.claude.springboot.springapi.app.controllers;
 
+import com.andres.course.claude.springboot.springapi.app.converters.ExportMediaTypes;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
 import com.andres.course.claude.springboot.springapi.app.services.CustomerService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,13 +30,25 @@ public class CustomerController {
     }
 
     // GET /api/customers -> 200 con la lista de clientes.
-    @GetMapping
+    // Content negotiation (Accept o ?format=): JSON por defecto, XML, CSV, Excel o PDF.
+    @GetMapping(produces = {
+            MediaType.APPLICATION_JSON_VALUE,
+            MediaType.APPLICATION_XML_VALUE,
+            ExportMediaTypes.TEXT_CSV_VALUE,
+            ExportMediaTypes.XLSX_VALUE,
+            MediaType.APPLICATION_PDF_VALUE
+    })
     public List<CustomerDto> findAll() {
         return customerService.findAll();
     }
 
     // GET /api/customers/{id} -> 200, o 404 si no existe.
-    @GetMapping("/{id}")
+    // Content negotiation: JSON por defecto, XML o la ficha del cliente en PDF.
+    @GetMapping(value = "/{id}", produces = {
+            MediaType.APPLICATION_JSON_VALUE,
+            MediaType.APPLICATION_XML_VALUE,
+            MediaType.APPLICATION_PDF_VALUE
+    })
     public CustomerDto findById(@PathVariable Long id) {
         return customerService.findById(id);
     }
