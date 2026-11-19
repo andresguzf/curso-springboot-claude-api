@@ -87,3 +87,12 @@ Reglas clave de la skill en este proyecto:
 ## Buscador de clientes
 
 `GET /api/customers?search=&active=` con `repositories/CustomerSpecifications` (`JpaSpecificationExecutor`), no `@Query` con `(:param is null or ...)`, que en PostgreSQL falla con parámetros nulos. `search` usa `LIKE` en minúsculas sobre `name`, `lastName`, `email` y `city`, escapando `%` y `_`. Como comparte endpoint con la exportación, CSV/Excel/PDF/XML exportan el resultado filtrado.
+
+## Especificaciones (SDD)
+
+Los cambios que necesita el dashboard React (`../4-react`) se especifican con SDD en `specs/`:
+
+- `specs/constitution.md`: reglas del backend que toda spec y tarea debe respetar.
+- `specs/01-paginacion-filtros-admin/`: `spec.md` (qué y por qué), `plan.md` (contrato y decisiones) y `tasks.md` (tareas `A-01` … `A-11`): fechas de auditoría de solo lectura, listados paginados con filtros (clientes y usuarios) sin romper la exportación, y protección del último ADMIN.
+
+Las tareas se ejecutan una a una desde la sesión de `4-react` con su skill `sdd-next-task` (índice global y estado en `../4-react/specs/README.md`), en la rama `feature/paginacion-filtros`. Hasta que A-11 actualice este archivo, la sección "Buscador de clientes" describe el contrato **anterior** (listado sin paginar).
