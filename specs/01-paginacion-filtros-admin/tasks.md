@@ -81,12 +81,13 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test`; `curl -b cookies.txt "localhost:8080/api/users?role=ADMIN&enabled=true"`
   - Commit: "Agrega búsqueda, filtros y paginación al listado de usuarios"
 
-- [ ] **A-10** Proteger al último administrador habilitado
+- [x] **A-10** Proteger al último administrador habilitado
   - Depende de: A-08
   - Cubre: RF-01-08, RNF-01-02
   - Archivos: `app/repositories/UserRepository.java`, `app/services/UserServiceImpl.java`, `test/services/UserServiceImplTest.java` (nuevo), `test/controllers/UserControllerTest.java`
   - Hecho cuando: borrar, degradar o deshabilitar al único ADMIN habilitado lanza `OperationNotAllowedException("Debe quedar al menos un administrador habilitado")` (409); con dos admins funciona; editar el email del último admin funciona; un admin deshabilitado no cuenta; las reglas de "uno mismo" conservan sus mensajes
   - Verificación: `./mvnw test` (unos 9 casos en `UserServiceImplTest` + 409 en el controller); prueba manual con curl creando un segundo admin
+  - Nota: la prueba manual se hizo en una base temporal (`spring_api_a10`, borrada al terminar): A degrada a B; con su token aún ADMIN, B recibe 409 al borrar, degradar o deshabilitar a A
   - Commit: "Impide eliminar, degradar o deshabilitar al último administrador habilitado"
 
 - [ ] **A-11** Documentar la fase A

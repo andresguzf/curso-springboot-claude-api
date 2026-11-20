@@ -165,6 +165,17 @@ class UserControllerTest {
     }
 
     @Test
+    void borrarAlUltimoAdminResponde409ConProblemDetail() throws Exception {
+        doThrow(new OperationNotAllowedException("Debe quedar al menos un administrador habilitado"))
+                .when(userService).delete(2L, "admin@ejemplo.com");
+
+        mockMvc.perform(withCsrf(delete("/api/users/2"), admin()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Operación no permitida"))
+                .andExpect(jsonPath("$.detail").value("Debe quedar al menos un administrador habilitado"));
+    }
+
+    @Test
     void adminNoPuedeBorrarseASiMismo() throws Exception {
         doThrow(new OperationNotAllowedException("No puedes borrar tu propio usuario"))
                 .when(userService).delete(1L, "admin@ejemplo.com");
