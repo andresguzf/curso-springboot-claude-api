@@ -56,12 +56,13 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test`; con la app arriba, `curl -b cookies.txt "localhost:8080/api/customers?page=0&size=5&sort=lastName,desc&city=san"` y `curl -b cookies.txt -o c.csv "localhost:8080/api/customers?city=san&format=csv"`
   - Commit: "Agrega paginación y filtros por fecha y ciudad al listado de clientes"
 
-- [ ] **A-07** (Opcional) Repartir `created_at` en el seed
+- [x] **A-07** (Opcional) Repartir `created_at` en el seed
   - Depende de: A-06
   - Cubre: RF-01-05
   - Archivos: `src/main/resources/data.sql`, `README.md` (nota con el `UPDATE` para bases existentes)
-  - Hecho cuando: en una base nueva los 20 clientes tienen fechas de alta distintas (`now() - (n || ' days')::interval`) y el filtro `createdFrom` devuelve un subconjunto
-  - Verificación: `./mvnw test`; recrear la base local y probar `?createdFrom=` con curl
+  - Hecho cuando: en una base nueva los 20 clientes tienen fechas de alta distintas (`now() - make_interval(days => days_ago)`, de 0 a 120 días) y el filtro `createdFrom` devuelve un subconjunto
+  - Verificación: `./mvnw test`; probar `?createdFrom=` con curl contra una base nueva
+  - Nota: se verificó en una base temporal (`spring_api_a07`, borrada al terminar) para no recrear la base local del usuario; el `UPDATE` del README también se probó ahí
   - Commit: "Reparte las fechas de alta del seed para probar los filtros por fecha"
 
 - [ ] **A-08** Filtros y Specifications de usuarios

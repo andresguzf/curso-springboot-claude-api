@@ -85,6 +85,19 @@ Proyecto del curso de Spring Boot con Claude Code.
 
 Hibernate crea las tablas `customers`, `users` y `refresh_tokens` automáticamente al arrancar (`ddl-auto=update`). Si no existe un usuario con `ADMIN_EMAIL`, se crea como administrador con `ADMIN_PASSWORD`. Luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
 
+Las fechas de alta (`created_at`) del seed se reparten en los últimos 120 días, para que el filtro por fecha de alta (`createdFrom` / `createdTo`) devuelva resultados distintos. Si tu base se creó con una versión anterior del seed (todos los clientes con la misma fecha), puedes repartirlas sin borrar nada; supone que los clientes del seed son los de id 1 a 20:
+
+```bash
+docker exec -i 3-spring-api-db psql -U postgres -d spring_api <<'SQL'
+UPDATE customers c
+SET created_at = now() - make_interval(days => d.days_ago)
+FROM (VALUES (1, 120), (2, 110), (3, 100), (4, 90), (5, 80), (6, 70), (7, 62), (8, 55), (9, 48), (10, 41),
+             (11, 35), (12, 29), (13, 23), (14, 18), (15, 14), (16, 10), (17, 7), (18, 4), (19, 2), (20, 0))
+     AS d (id, days_ago)
+WHERE c.id = d.id;
+SQL
+```
+
 ## Seguridad
 
 La API usa **JWT en cookies HttpOnly**: el token nunca aparece en el cuerpo de las respuestas ni es accesible desde JavaScript, lo que evita que un script malicioso (XSS) lo robe.
