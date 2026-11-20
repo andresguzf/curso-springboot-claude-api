@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.andres.course.claude.springboot.springapi.app.security.TestRequests.accessCookie;
@@ -61,7 +62,7 @@ class UserControllerTest {
     void elPasswordNuncaSaleEnLaRespuesta() throws Exception {
         // Aunque el DTO trajera password, Jackson no lo escribe (WRITE_ONLY).
         when(userService.findAll()).thenReturn(List.of(
-                new UserDto(1L, "ana@ejemplo.com", "secreto123", Role.USER, true)));
+                new UserDto(1L, "ana@ejemplo.com", "secreto123", Role.USER, true, null, null)));
 
         mockMvc.perform(get("/api/users").cookie(admin()))
                 .andExpect(status().isOk())
@@ -72,7 +73,7 @@ class UserControllerTest {
 
     @Test
     void adminCreaUsuarioYElPasswordSeLeeDelRequest() throws Exception {
-        when(userService.create(any())).thenReturn(new UserDto(2L, "nuevo@ejemplo.com", null, Role.USER, true));
+        when(userService.create(any())).thenReturn(new UserDto(2L, "nuevo@ejemplo.com", null, Role.USER, true, null, null));
 
         mockMvc.perform(withCsrf(post("/api/users"), admin())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +83,32 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "http://localhost/api/users/2"))
                 .andExpect(jsonPath("$.password").doesNotExist());
-        verify(userService).create(new UserDto(null, "nuevo@ejemplo.com", "password123", Role.USER, null));
+        verify(userService).create(new UserDto(null, "nuevo@ejemplo.com", "password123", Role.USER, null, null, null));
+    }
+
+    @Test
+    void lasFechasDeAuditoriaSonSoloLectura() throws Exception {
+        LocalDateTime creado = LocalDateTime.of(2026, 11, 19, 10, 15, 30);
+        when(userService.findById(2L)).thenReturn(
+                new UserDto(2L, "nuevo@ejemplo.com", null, Role.USER, true, creado, null));
+        when(userService.create(any())).thenReturn(
+                new UserDto(2L, "nuevo@ejemplo.com", null, Role.USER, true, creado, null));
+
+        // En la respuesta salen las fechas de auditoría (updatedAt null si nunca se modificó)
+        mockMvc.perform(get("/api/users/2").cookie(admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value("2026-11-19T10:15:30"))
+                .andExpect(jsonPath("$.updatedAt").isEmpty());
+
+        // En el request se ignoran: el service las recibe en null
+        mockMvc.perform(withCsrf(post("/api/users"), admin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"nuevo@ejemplo.com","password":"password123","role":"USER",
+                                 "createdAt":"2000-01-01T00:00:00","updatedAt":"2000-01-01T00:00:00"}
+                                """))
+                .andExpect(status().isCreated());
+        verify(userService).create(new UserDto(null, "nuevo@ejemplo.com", "password123", Role.USER, null, null, null));
     }
 
     @Test

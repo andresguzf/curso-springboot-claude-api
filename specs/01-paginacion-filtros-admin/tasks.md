@@ -15,7 +15,7 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test` (test nuevo `lasFechasDeAuditoriaSonSoloLectura`)
   - Commit: "Expone las fechas de auditoría como solo lectura en el DTO de clientes"
 
-- [ ] **A-02** Exponer la auditoría de solo lectura en usuarios
+- [x] **A-02** Exponer la auditoría de solo lectura en usuarios
   - Depende de: A-01
   - Cubre: RF-01-01, RNF-01-03
   - Archivos: `app/dto/UserDto.java`, `app/mappers/UserMapper.java`, `app/config/AdminUserInitializer.java`, `test/controllers/UserControllerTest.java`, `test/controllers/AuthControllerTest.java`

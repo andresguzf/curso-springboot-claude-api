@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class AuthControllerTest {
 
-    private static final UserDto ADMIN = new UserDto(1L, "admin@ejemplo.com", null, Role.ADMIN, true);
+    private static final UserDto ADMIN = new UserDto(1L, "admin@ejemplo.com", null, Role.ADMIN, true, null, null);
 
     @Autowired
     private MockMvc mockMvc;

@@ -39,7 +39,8 @@ public class AdminUserInitializer implements ApplicationRunner {
             log.warn("No se creó el administrador inicial: define ADMIN_PASSWORD en el .env");
             return;
         }
-        userService.create(new UserDto(null, adminProperties.email(), adminProperties.password(), Role.ADMIN, true));
+        userService.create(new UserDto(null, adminProperties.email(), adminProperties.password(), Role.ADMIN, true,
+                null, null));
         log.info("Administrador inicial creado");
     }
 }
