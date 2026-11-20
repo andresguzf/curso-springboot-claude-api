@@ -121,6 +121,8 @@ La API usa **JWT en cookies HttpOnly**: el token nunca aparece en el cuerpo de l
 
 Un administrador no puede borrarse, deshabilitarse ni quitarse el rol `ADMIN` a sí mismo (409).
 
+Además, **siempre debe quedar al menos un administrador habilitado**: borrar, degradar a `USER` o deshabilitar al último `ADMIN` habilitado responde 409 con el detalle "Debe quedar al menos un administrador habilitado". Esta regla cubre un caso que la anterior no alcanza: como el rol viaja en el JWT, un admin recién degradado conserva el rol `ADMIN` en su token hasta 15 minutos y podría intentar degradar o borrar al otro admin.
+
 ### Autenticación: `/api/auth`
 
 | Método | Ruta | Descripción | Respuesta |
@@ -161,35 +163,79 @@ Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
 
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/customers` | Lista los clientes, con filtros opcionales | 200 |
+| `GET` | `/api/customers` | Lista paginada de clientes, con filtros y orden opcionales | 200, 400 |
 | `GET` | `/api/customers/{id}` | Obtiene un cliente | 200, 404 |
 | `POST` | `/api/customers` | Crea un cliente | 201 + `Location`, 400, 409 |
 | `PUT` | `/api/customers/{id}` | Actualiza un cliente | 200, 400, 404, 409 |
 | `DELETE` | `/api/customers/{id}` | Elimina un cliente | 204, 404 |
 
-#### Buscador
+#### Listado paginado, búsqueda y filtros
 
-`GET /api/customers` acepta dos filtros opcionales que se combinan:
+> **Cambio incompatible:** el listado en JSON ya no devuelve un arreglo, sino una página (`content` + `page`). Las URLs de exportación (`?format=csv`, `xlsx`, `pdf`, `xml`) no cambian.
 
-- `search`: texto que se busca, sin distinguir mayúsculas, en nombre, apellido, email y ciudad.
-- `active`: `true` o `false` para filtrar por estado.
+`GET /api/customers` acepta estos parámetros opcionales; los filtros se combinan (todos deben cumplirse):
 
-```bash
-curl -b cookies.txt "http://localhost:8080/api/customers?search=pérez&active=true"
-curl -b cookies.txt -o clientes.csv "http://localhost:8080/api/customers?search=santiago&format=csv"
+| Parámetro | Ejemplo | Descripción |
+|---|---|---|
+| `search` | `pérez` | Texto que se busca, sin distinguir mayúsculas, en nombre, apellido, email y ciudad |
+| `active` | `true` | `true` activos, `false` inactivos |
+| `city` | `san` | Texto contenido en la ciudad |
+| `birthFrom`, `birthTo` | `1985-01-01` | Rango de fecha de nacimiento (`yyyy-MM-dd`, inclusivo) |
+| `createdFrom`, `createdTo` | `2026-11-01` | Rango de fecha de alta (`yyyy-MM-dd`, inclusivo: `createdTo` incluye todo ese día) |
+| `page` | `0` | Número de página, desde 0 (solo JSON) |
+| `size` | `20` | Tamaño de página: 10 por defecto, máximo 100 (un valor mayor se recorta a 100) (solo JSON) |
+| `sort` | `lastName,desc` | Orden `campo,asc\|desc`; se puede repetir. Campos permitidos: `id`, `name`, `lastName`, `email`, `city`, `birthDate`, `active`, `createdAt`, `updatedAt`. Por defecto `id` |
+
+Respuesta JSON:
+
+```json
+{
+  "content": [
+    {
+      "id": 1, "name": "Ana", "lastName": "Pérez", "email": "…", "phone": "+56 9 1000 0001",
+      "address": "Av. Siempre Viva 101", "city": "Santiago", "birthDate": "1990-05-20", "active": true,
+      "createdAt": "2026-07-23T10:15:30", "updatedAt": null
+    }
+  ],
+  "page": { "size": 10, "number": 0, "totalElements": 20, "totalPages": 2 }
+}
 ```
 
-Los formatos de exportación (CSV, Excel, PDF, XML) exportan el **resultado filtrado**.
+```bash
+# -G + --data-urlencode codifica la "é"; sin codificar, Tomcat rechaza la URL con 400
+curl -b cookies.txt -G "http://localhost:8080/api/customers" --data-urlencode "search=pérez" -d active=true
+curl -b cookies.txt "http://localhost:8080/api/customers?page=0&size=5&sort=lastName,desc&city=san"
+curl -b cookies.txt "http://localhost:8080/api/customers?birthFrom=1985-01-01&birthTo=1990-12-31"
+curl -b cookies.txt -o clientes.csv "http://localhost:8080/api/customers?city=santiago&format=csv"
+```
+
+- Si se pide ordenar por un campo no permitido, si un rango tiene "desde" posterior a "hasta" o si una fecha no tiene formato `yyyy-MM-dd`, responde **400** con el detalle.
+- Los formatos de exportación (CSV, Excel, PDF, XML) exportan **todo el resultado filtrado y ordenado**, no solo una página: `page` y `size` se ignoran.
+- La paginación es estable: si dos clientes empatan en el campo de orden, se desempata por `id`.
 
 ### Usuarios: `/api/users` (solo `ADMIN`)
 
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
-| `GET` | `/api/users` | Lista los usuarios | 200 |
+| `GET` | `/api/users` | Lista paginada de usuarios, con búsqueda y filtros | 200, 400 |
 | `GET` | `/api/users/{id}` | Obtiene un usuario | 200, 404 |
 | `POST` | `/api/users` | Crea un usuario | 201 + `Location`, 400, 409 |
 | `PUT` | `/api/users/{id}` | Actualiza un usuario | 200, 400, 404, 409 |
 | `DELETE` | `/api/users/{id}` | Elimina un usuario | 204, 404, 409 |
+
+El listado devuelve el mismo formato paginado que el de clientes (`content` + `page`) y acepta:
+
+| Parámetro | Ejemplo | Descripción |
+|---|---|---|
+| `search` | `admin` | Texto contenido en el email, sin distinguir mayúsculas |
+| `role` | `ADMIN` | `USER` o `ADMIN` |
+| `enabled` | `true` | `true` habilitados, `false` deshabilitados |
+| `page`, `size` | `0`, `10` | Igual que en clientes (10 por defecto, máximo 100) |
+| `sort` | `createdAt,desc` | Campos permitidos: `id`, `email`, `role`, `enabled`, `createdAt`. Por defecto `email` |
+
+```bash
+curl -b cookies.txt "http://localhost:8080/api/users?role=ADMIN&enabled=true"
+```
 
 | Campo | Obligatorio | Reglas |
 |---|---|---|
@@ -197,8 +243,9 @@ Los formatos de exportación (CSV, Excel, PDF, XML) exportan el **resultado filt
 | `password` | Al crear | 8 a 72 caracteres; solo de escritura (nunca sale en las respuestas). Al editar, si no se envía se conserva |
 | `role` | Sí | `USER` o `ADMIN` |
 | `enabled` | No | `true` por defecto; un usuario deshabilitado no puede iniciar sesión |
+| `createdAt`, `updatedAt` | — | Solo de lectura: salen en las respuestas y se ignoran si se envían |
 
-La contraseña se guarda hasheada con BCrypt.
+La contraseña se guarda hasheada con BCrypt. `PUT` y `DELETE` responden 409 si se intenta quitar permisos a uno mismo o dejar el sistema sin administradores habilitados (ver [Roles](#roles)).
 
 Documentación interactiva en **Swagger UI**: http://localhost:8080/swagger-ui.html
 
@@ -234,7 +281,7 @@ Campos del cliente:
 | `birthDate` | Sí | fecha pasada (`yyyy-MM-dd`) |
 | `active` | No | `true` por defecto |
 
-Las fechas de creación y edición las asigna el sistema y no se envían en el JSON.
+Las fechas de alta y de última edición (`createdAt`, `updatedAt`) las asigna el sistema: salen en las respuestas como solo lectura y, si se envían en un `POST` o `PUT`, se ignoran. `updatedAt` es `null` mientras el cliente no se haya editado nunca.
 
 ## Formatos de exportación (content negotiation)
 
@@ -250,6 +297,8 @@ El listado y el detalle de clientes responden en distintos formatos según lo qu
 
 Un formato no disponible para ese endpoint responde **406 Not Acceptable**.
 
+El listado en JSON es paginado; los demás formatos exportan **todo el resultado** con los filtros y el orden de la petición (ver [Listado paginado, búsqueda y filtros](#listado-paginado-búsqueda-y-filtros)). En Swagger UI ambos aparecen como una sola operación `GET /api/customers` con todos los formatos de respuesta.
+
 ```bash
 curl -b cookies.txt -H "Accept: application/xml" http://localhost:8080/api/customers
 curl -b cookies.txt -o clientes.xlsx "http://localhost:8080/api/customers?format=xlsx"
@@ -258,7 +307,8 @@ curl -b cookies.txt -o clientes.pdf  "http://localhost:8080/api/customers?format
 curl -b cookies.txt -o cliente-1.pdf "http://localhost:8080/api/customers/1?format=pdf"
 ```
 
-- **CSV**: separado por punto y coma (`;`), el separador que usa Excel con configuración regional en español, en UTF-8 (con BOM para que Excel muestre bien los acentos) y con los mismos nombres de campo que el JSON.
+- **XML**: los mismos campos que el JSON, incluidas las fechas de auditoría `createdAt` y `updatedAt`.
+- **CSV**: separado por punto y coma (`;`), el separador que usa Excel con configuración regional en español, en UTF-8 (con BOM para que Excel muestre bien los acentos) y con los mismos nombres de campo que el JSON, salvo las fechas de auditoría (igual que Excel y PDF).
 - **Excel**: hoja *Clientes* con encabezado fijo, autofiltro y fechas como celdas de fecha.
 - **PDF**: diseño minimalista; el listado es una tabla con todas las columnas y el detalle es una ficha con todos los datos del cliente, su estado y su edad.
 
@@ -271,9 +321,11 @@ Todos los errores se responden en formato `ProblemDetail`:
 | El cliente o usuario no existe | 404 Not Found |
 | El email ya está registrado | 409 Conflict |
 | Campos inválidos | 400 Bad Request, con el detalle por campo |
+| Filtro con formato inválido (p. ej. `?birthFrom=ayer` o `?role=FOO`) | 400 Bad Request, con el detalle por campo ("El valor 'ayer' no tiene un formato válido") |
+| Orden no permitido (`?sort=password`) o rango de fechas invertido | 400 Bad Request |
 | Sin sesión, token inválido o expirado, login fallido | 401 Unauthorized |
 | Rol sin permiso o falta el token CSRF | 403 Forbidden |
-| Operación no permitida (p. ej. un admin que se borra a sí mismo) | 409 Conflict |
+| Operación no permitida (un admin que se borra o se quita permisos a sí mismo, o dejar el sistema sin administradores habilitados) | 409 Conflict |
 
 Ejemplo de error de validación:
 
@@ -313,4 +365,8 @@ src/main/java/com/andres/course/claude/springboot/springapi/app/
 ./mvnw test
 ```
 
-El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto (seguridad de los controllers con `@WebMvcTest`, JWT y refresh tokens) corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`.
+El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`: seguridad, paginación y filtros de los controllers con `@WebMvcTest`, reglas de los services con Mockito (paginación de clientes, último administrador), validación del orden (`Pageables`), JWT y refresh tokens.
+
+## Especificaciones (SDD)
+
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas.

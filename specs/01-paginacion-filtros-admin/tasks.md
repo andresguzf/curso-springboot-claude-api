@@ -90,11 +90,12 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Nota: la prueba manual se hizo en una base temporal (`spring_api_a10`, borrada al terminar): A degrada a B; con su token aún ADMIN, B recibe 409 al borrar, degradar o deshabilitar a A
   - Commit: "Impide eliminar, degradar o deshabilitar al último administrador habilitado"
 
-- [ ] **A-11** Documentar la fase A
+- [x] **A-11** Documentar la fase A
   - Depende de: A-06, A-09, A-10
   - Cubre: RF-01-09
   - Archivos: `README.md`, `CLAUDE.md`, `specs/01-paginacion-filtros-admin/spec.md` (estado: Hecha), `4-react/specs/README.md` (estado)
   - Hecho cuando: el README documenta parámetros, respuesta paginada, aviso de cambio incompatible, fechas de auditoría y regla del último admin; `CLAUDE.md` explica los dos handlers por `produces`, los records `XFilter`, `Pageables`, `max-page-size`, la auditoría `READ_ONLY` y el último admin
   - Verificación: `./mvnw test`; revisar que los ejemplos curl del README funcionen
+  - Nota: el ejemplo `?search=pérez` (anterior a esta fase) respondía 400 porque curl envía la "é" sin codificar; se cambió a `-G --data-urlencode`
   - Commit: "Documenta paginación, filtros y protección del último administrador"
   - Al cerrar: preguntar al usuario si hace merge de `feature/paginacion-filtros` a `main` y push
