@@ -2,8 +2,15 @@ package com.andres.course.claude.springboot.springapi.app.controllers;
 
 import com.andres.course.claude.springboot.springapi.app.converters.ExportMediaTypes;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
+import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
 import com.andres.course.claude.springboot.springapi.app.services.CustomerService;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +20,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -30,19 +36,30 @@ public class CustomerController {
         this.customerService = customerService;
     }
 
-    // GET /api/customers -> 200 con la lista de clientes (roles USER y ADMIN).
-    // Filtros opcionales: ?search=texto (nombre, apellido, email o ciudad) y ?active=true|false.
-    // Content negotiation (Accept o ?format=): JSON por defecto, XML, CSV, Excel o PDF; exporta el resultado filtrado.
+    // GET /api/customers (roles USER y ADMIN). Dos handlers en la misma ruta, separados por produces:
+    // la content negotiation (Accept o ?format=) elige uno; sin preferencia responde JSON.
+    // Swagger UI los muestra fusionados en una sola operación (misma ruta y método) con todos los formatos.
+    // @ParameterObject hace que cada filtro y page/size/sort aparezcan en Swagger como query params sueltos.
+    // Filtros opcionales (CustomerFilter): search, active, city, birthFrom, birthTo, createdFrom, createdTo.
+
+    // JSON -> 200 con una página: {content, page:{size, number, totalElements, totalPages}}.
+    // ?page= (desde 0), ?size= (10 por defecto, máximo 100) y ?sort=campo,asc|desc (repetible).
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public PagedModel<CustomerDto> findPage(@ParameterObject CustomerFilter filter,
+                                            @ParameterObject @PageableDefault(sort = "id") Pageable pageable) {
+        return new PagedModel<>(customerService.findPage(filter, pageable));
+    }
+
+    // XML, CSV, Excel o PDF -> exporta TODO el resultado filtrado y ordenado, sin paginar.
+    // Los conversores de converters/ escriben la List<CustomerDto>.
     @GetMapping(produces = {
-            MediaType.APPLICATION_JSON_VALUE,
             MediaType.APPLICATION_XML_VALUE,
             ExportMediaTypes.TEXT_CSV_VALUE,
             ExportMediaTypes.XLSX_VALUE,
             MediaType.APPLICATION_PDF_VALUE
     })
-    public List<CustomerDto> findAll(@RequestParam(required = false) String search,
-                                     @RequestParam(required = false) Boolean active) {
-        return customerService.findAll(search, active);
+    public List<CustomerDto> export(@ParameterObject CustomerFilter filter, @SortDefault(sort = "id") Sort sort) {
+        return customerService.findAll(filter, sort);
     }
 
     // GET /api/customers/{id} -> 200, o 404 si no existe.

@@ -35,12 +35,6 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CustomerDto> findAll(String search, Boolean active) {
-        return findAll(new CustomerFilter(search, active, null, null, null, null, null), Sort.unsorted());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Page<CustomerDto> findPage(CustomerFilter filter, Pageable pageable) {
         validateRanges(filter);
         return customerRepository.findAll(CustomerSpecifications.of(filter), Pageables.checked(pageable, SORT_FIELDS))

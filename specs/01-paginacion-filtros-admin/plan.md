@@ -96,8 +96,8 @@ Lista blanca de orden: `id, email, role, enabled, createdAt`. Orden por defecto:
 
 | Riesgo | Mitigación |
 |---|---|
-| springdoc fusiona los dos handlers en una sola operación | Revisar `/swagger-ui.html` en A-06 y documentarlo. |
-| `max-page-size` no aplica en el slice de test | Customizer en `WebConfig` (ver decisiones). |
+| springdoc fusiona los dos handlers en una sola operación | Confirmado en A-06: Swagger muestra una sola operación `GET /api/customers` con todos los formatos de respuesta. Con `@ParameterObject` en `CustomerFilter` y `Pageable`, cada filtro y `page` / `size` / `sort` aparecen como query params. Se documenta en el controller y en el README (A-11). |
+| `max-page-size` no aplica en el slice de test | Descartado en A-06: la propiedad sí aplica en `@WebMvcTest`; no hizo falta el customizer en `WebConfig`. |
 | Carrera entre dos admins que se degradan a la vez | Aceptado; mejora opcional con `@Lock(PESSIMISTIC_WRITE)`. |
 | `updatedAt` nulo en registros nunca editados | Documentado; el frontend lo trata como opcional. |
 

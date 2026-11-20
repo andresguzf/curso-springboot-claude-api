@@ -48,7 +48,7 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test`
   - Commit: "Agrega listado paginado y filtrado al servicio de clientes"
 
-- [ ] **A-06** Controller de clientes: JSON paginado y exportación completa
+- [x] **A-06** Controller de clientes: JSON paginado y exportación completa
   - Depende de: A-05
   - Cubre: RF-01-02, RF-01-03, RF-01-04, RF-01-05, RF-01-06
   - Archivos: `app/controllers/CustomerController.java`, `src/main/resources/application.properties`, `app/config/WebConfig.java` (solo si hace falta el customizer), `test/controllers/CustomerControllerSecurityTest.java`
