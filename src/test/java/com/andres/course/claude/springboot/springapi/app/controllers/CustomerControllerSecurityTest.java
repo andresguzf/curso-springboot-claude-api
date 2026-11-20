@@ -15,11 +15,15 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.mockito.ArgumentCaptor;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.andres.course.claude.springboot.springapi.app.security.TestRequests.accessCookie;
 import static com.andres.course.claude.springboot.springapi.app.security.TestRequests.withCsrf;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -60,7 +64,8 @@ class CustomerControllerSecurityTest {
 
     private static CustomerDto customer() {
         return new CustomerDto(1L, "Ana", "Pérez", "ana@ejemplo.com", "+56 9 1000 0001",
-                "Av. Siempre Viva 101", "Santiago", LocalDate.of(1990, 5, 20), true);
+                "Av. Siempre Viva 101", "Santiago", LocalDate.of(1990, 5, 20), true,
+                LocalDateTime.of(2026, 11, 19, 10, 15, 30), null);
     }
 
     @Test
@@ -106,6 +111,31 @@ class CustomerControllerSecurityTest {
         mockMvc.perform(withCsrf(post("/api/customers"), admin())
                         .contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void lasFechasDeAuditoriaSonSoloLectura() throws Exception {
+        when(customerService.findById(1L)).thenReturn(customer());
+        when(customerService.create(any())).thenReturn(customer());
+
+        // En la respuesta salen las fechas de auditoría (updatedAt null si nunca se modificó)
+        mockMvc.perform(get("/api/customers/1").cookie(user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value("2026-11-19T10:15:30"))
+                .andExpect(jsonPath("$.updatedAt").isEmpty());
+
+        // En el request se ignoran: el service recibe createdAt y updatedAt en null
+        String bodyConFechas = BODY.replace("\"birthDate\":\"1990-05-20\"",
+                "\"birthDate\":\"1990-05-20\",\"createdAt\":\"2000-01-01T00:00:00\",\"updatedAt\":\"2000-01-01T00:00:00\"");
+        mockMvc.perform(withCsrf(post("/api/customers"), admin())
+                        .contentType(MediaType.APPLICATION_JSON).content(bodyConFechas))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<CustomerDto> captor = ArgumentCaptor.forClass(CustomerDto.class);
+        verify(customerService).create(captor.capture());
+        assertThat(captor.getValue().createdAt()).isNull();
+        assertThat(captor.getValue().updatedAt()).isNull();
+        assertThat(captor.getValue().email()).isEqualTo("ana@ejemplo.com");
     }
 
     @Test

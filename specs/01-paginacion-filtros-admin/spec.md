@@ -4,7 +4,7 @@
 |---|---|
 | Fase | A (backend) |
 | Repo | `3-spring-api` |
-| Estado | Pendiente |
+| Estado | En curso (1/11) |
 | Depende de | — |
 | La necesitan | Specs 04 (clientes) y 05 (usuarios) del frontend (`4-react/specs/`) |
 | Constitución | [`../constitution.md`](../constitution.md) |

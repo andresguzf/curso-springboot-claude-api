@@ -6,13 +6,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * DTO único de Customer para request y response.
- * No incluye las fechas de auditoría (createdAt / updatedAt): las maneja el sistema.
+ * Las fechas de auditoría (createdAt / updatedAt) son de solo lectura: salen en la
+ * respuesta, pero se ignoran en el request porque las asigna el sistema.
  * En XML se escribe como <customer>.
  */
 @JsonRootName("customer")
@@ -49,6 +52,14 @@ public record CustomerDto(
         LocalDate birthDate,
 
         // Opcional: si no se envía al crear, el cliente queda activo.
-        Boolean active
+        Boolean active,
+
+        // Solo lectura: las asigna el sistema (@PrePersist / @PreUpdate) y se ignoran en el request.
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        LocalDateTime createdAt,
+
+        // Solo lectura: null mientras el cliente no se haya modificado nunca.
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        LocalDateTime updatedAt
 ) {
 }

@@ -7,7 +7,7 @@ para revisión. Definición de "hecho" en la [constitución](../constitution.md#
 Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app/`,
 `test/` = `src/test/java/com/andres/course/claude/springboot/springapi/app/`.
 
-- [ ] **A-01** Crear la rama y exponer la auditoría de solo lectura en clientes
+- [x] **A-01** Crear la rama y exponer la auditoría de solo lectura en clientes
   - Depende de: —
   - Cubre: RF-01-01, RNF-01-03
   - Archivos: `app/dto/CustomerDto.java`, `app/mappers/CustomerMapper.java`, `test/controllers/CustomerControllerSecurityTest.java`
