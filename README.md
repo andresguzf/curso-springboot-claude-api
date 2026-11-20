@@ -4,6 +4,8 @@ API REST para gestionar clientes (`Customer`) construida con Spring Boot 4, Spri
 
 Proyecto del curso de Spring Boot con Claude Code.
 
+**Frontend:** el dashboard que consume esta API es [Cartera](https://github.com/andresguzf/curso-springboot-claude-react), una aplicación React + TypeScript (en local, en la carpeta hermana `../4-react`). Usa el login con cookies, los listados paginados con filtros, la exportación y la administración de usuarios descritos aquí; en desarrollo se conecta por el proxy de Vite (`/api` → `http://localhost:8080`), así que no hace falta CORS.
+
 ## Stack
 
 - Java 25
@@ -369,4 +371,4 @@ El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El rest
 
 ## Especificaciones (SDD)
 
-Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas.
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. Las specs del frontend (fases 02 a 06) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
