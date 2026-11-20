@@ -1,6 +1,7 @@
 package com.andres.course.claude.springboot.springapi.app.controllers;
 
 import com.andres.course.claude.springboot.springapi.app.dto.UserDto;
+import com.andres.course.claude.springboot.springapi.app.dto.UserFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
 import com.andres.course.claude.springboot.springapi.app.models.Role;
 import com.andres.course.claude.springboot.springapi.app.security.JwtService;
@@ -8,7 +9,12 @@ import com.andres.course.claude.springboot.springapi.app.security.SecurityTestCo
 import com.andres.course.claude.springboot.springapi.app.services.UserService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -21,7 +27,9 @@ import java.util.List;
 
 import static com.andres.course.claude.springboot.springapi.app.security.TestRequests.accessCookie;
 import static com.andres.course.claude.springboot.springapi.app.security.TestRequests.withCsrf;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -59,16 +67,47 @@ class UserControllerTest {
     }
 
     @Test
-    void elPasswordNuncaSaleEnLaRespuesta() throws Exception {
+    void elListadoEsPaginadoYElPasswordNuncaSaleEnLaRespuesta() throws Exception {
         // Aunque el DTO trajera password, Jackson no lo escribe (WRITE_ONLY).
-        when(userService.findAll()).thenReturn(List.of(
-                new UserDto(1L, "ana@ejemplo.com", "secreto123", Role.USER, true, null, null)));
+        when(userService.findPage(any(), any())).thenAnswer(invocation -> new PageImpl<>(List.of(
+                new UserDto(1L, "ana@ejemplo.com", "secreto123", Role.USER, true, null, null)),
+                invocation.getArgument(1), 1));
 
         mockMvc.perform(get("/api/users").cookie(admin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].email").value("ana@ejemplo.com"))
-                .andExpect(jsonPath("$[0].role").value("USER"))
-                .andExpect(jsonPath("$[0].password").doesNotExist());
+                .andExpect(jsonPath("$.content[0].email").value("ana@ejemplo.com"))
+                .andExpect(jsonPath("$.content[0].role").value("USER"))
+                .andExpect(jsonPath("$.content[0].password").doesNotExist())
+                .andExpect(jsonPath("$.page.totalElements").value(1));
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(userService).findPage(eq(UserFilter.empty()), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+        assertThat(captor.getValue().getSort()).isEqualTo(Sort.by("email"));
+    }
+
+    @Test
+    void enlazaLosFiltrosDeUsuarios() throws Exception {
+        when(userService.findPage(any(), any())).thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/users").cookie(admin())
+                        .param("search", "admin").param("role", "ADMIN").param("enabled", "true")
+                        .param("page", "1").param("size", "5"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(userService).findPage(eq(new UserFilter("admin", Role.ADMIN, true)), captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isEqualTo(1);
+        assertThat(captor.getValue().getPageSize()).isEqualTo(5);
+    }
+
+    @Test
+    void unRolInexistenteResponde400ConMensajeEnEspanol() throws Exception {
+        mockMvc.perform(get("/api/users").param("role", "FOO").cookie(admin()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Error de validación"))
+                .andExpect(jsonPath("$.errors.role").value("El valor 'FOO' no tiene un formato válido"));
+        verifyNoInteractions(userService);
     }
 
     @Test

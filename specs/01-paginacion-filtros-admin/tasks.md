@@ -73,11 +73,11 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw -q -DskipTests compile` y `./mvnw test`
   - Commit: "Agrega filtros por email, rol y estado a los usuarios"
 
-- [ ] **A-09** Listado de usuarios paginado y filtrado
+- [x] **A-09** Listado de usuarios paginado y filtrado
   - Depende de: A-04, A-08
   - Cubre: RF-01-04, RF-01-07, RNF-01-02
-  - Archivos: `app/services/UserService.java`, `app/services/UserServiceImpl.java`, `app/controllers/UserController.java`, `app/exceptions/GlobalExceptionHandler.java` (opcional: mensaje de binding en español), `test/controllers/UserControllerTest.java`
-  - Hecho cuando: `GET /api/users` devuelve `PagedModel<UserDto>` sin `password`; los filtros se enlazan al record; `role=FOO` responde 400
+  - Archivos: `app/services/UserService.java`, `app/services/UserServiceImpl.java`, `app/controllers/UserController.java`, `app/exceptions/GlobalExceptionHandler.java` (mensaje de binding en español), `test/controllers/UserControllerTest.java`, `test/controllers/CustomerControllerSecurityTest.java` (mensaje de `birthFrom=ayer`)
+  - Hecho cuando: `GET /api/users` devuelve `PagedModel<UserDto>` sin `password`; los filtros se enlazan al record; `role=FOO` responde 400 con "El valor 'FOO' no tiene un formato válido"; se elimina `UserService.findAll()`
   - Verificación: `./mvnw test`; `curl -b cookies.txt "localhost:8080/api/users?role=ADMIN&enabled=true"`
   - Commit: "Agrega búsqueda, filtros y paginación al listado de usuarios"
 

@@ -1,12 +1,18 @@
 package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.UserDto;
-
-import java.util.List;
+import com.andres.course.claude.springboot.springapi.app.dto.UserFilter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
-    List<UserDto> findAll();
+    /**
+     * Página de usuarios que cumplen el filtro (búsqueda por email, rol y estado).
+     *
+     * @throws IllegalArgumentException si se pide ordenar por un campo no permitido (400)
+     */
+    Page<UserDto> findPage(UserFilter filter, Pageable pageable);
 
     UserDto findById(Long id);
 

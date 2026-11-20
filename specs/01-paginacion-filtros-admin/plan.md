@@ -53,7 +53,7 @@ Lista blanca de orden: `id, email, role, enabled, createdAt`. Orden por defecto:
 |---|---|---|
 | `sort` fuera de la lista blanca | 400 "Solicitud inválida" | `IllegalArgumentException` en `Pageables` |
 | Rango con `from > to` | 400 "Solicitud inválida" | `IllegalArgumentException` en el service |
-| Fecha o enum con formato inválido | 400 | error de binding (con mensaje en español si se implementa A-09 opcional) |
+| Fecha o enum con formato inválido | 400 "Error de validación" | error de binding; `errors.campo` = "El valor 'x' no tiene un formato válido" (A-09) |
 | Último admin | 409 "Operación no permitida" | `OperationNotAllowedException` |
 
 ## 2. Decisiones

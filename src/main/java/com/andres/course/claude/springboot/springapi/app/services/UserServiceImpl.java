@@ -1,6 +1,7 @@
 package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.UserDto;
+import com.andres.course.claude.springboot.springapi.app.dto.UserFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.DuplicateResourceException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
@@ -8,14 +9,20 @@ import com.andres.course.claude.springboot.springapi.app.mappers.UserMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Role;
 import com.andres.course.claude.springboot.springapi.app.models.User;
 import com.andres.course.claude.springboot.springapi.app.repositories.UserRepository;
+import com.andres.course.claude.springboot.springapi.app.repositories.UserSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService {
+
+    /** Campos por los que se puede ordenar el listado ({@code ?sort=campo,asc|desc}); nunca password. */
+    static final Set<String> SORT_FIELDS = Set.of("id", "email", "role", "enabled", "createdAt");
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -32,11 +39,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDto> findAll() {
-        return userRepository.findAll()
-                .stream()
-                .map(userMapper::toDto)
-                .toList();
+    public Page<UserDto> findPage(UserFilter filter, Pageable pageable) {
+        return userRepository.findAll(UserSpecifications.of(filter), Pageables.checked(pageable, SORT_FIELDS))
+                .map(userMapper::toDto);
     }
 
     @Override

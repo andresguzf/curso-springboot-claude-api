@@ -170,7 +170,8 @@ class CustomerControllerSecurityTest {
     void unaFechaConFormatoInvalidoResponde400() throws Exception {
         mockMvc.perform(get("/api/customers").param("birthFrom", "ayer").cookie(user()))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.errors.birthFrom").value("El valor 'ayer' no tiene un formato válido"));
         verifyNoInteractions(customerService);
     }
 
