@@ -1,21 +1,29 @@
 package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
+import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.DuplicateResourceException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.mappers.CustomerMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
 import com.andres.course.claude.springboot.springapi.app.repositories.CustomerRepository;
 import com.andres.course.claude.springboot.springapi.app.repositories.CustomerSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class CustomerServiceImpl implements CustomerService {
+
+    /** Campos por los que se puede ordenar el listado ({@code ?sort=campo,asc|desc}). */
+    static final Set<String> SORT_FIELDS = Set.of(
+            "id", "name", "lastName", "email", "city", "birthDate", "active", "createdAt", "updatedAt");
 
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
@@ -27,11 +35,17 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CustomerDto> findAll(String search, Boolean active) {
-        Specification<Customer> filters = Specification.allOf(
-                CustomerSpecifications.matches(search),
-                CustomerSpecifications.hasActive(active));
-        return customerRepository.findAll(filters, Sort.by("id"))
+    public Page<CustomerDto> findPage(CustomerFilter filter, Pageable pageable) {
+        validateRanges(filter);
+        return customerRepository.findAll(CustomerSpecifications.of(filter), Pageables.checked(pageable, SORT_FIELDS))
+                .map(customerMapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerDto> findAll(CustomerFilter filter, Sort sort) {
+        validateRanges(filter);
+        return customerRepository.findAll(CustomerSpecifications.of(filter), Pageables.checked(sort, SORT_FIELDS))
                 .stream()
                 .map(customerMapper::toDto)
                 .toList();
@@ -71,6 +85,23 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public void delete(Long id) {
         customerRepository.delete(getOrThrow(id));
+    }
+
+    // Un rango con "desde" posterior a "hasta" no devolvería nada: se avisa con un 400.
+    private void validateRanges(CustomerFilter filter) {
+        if (filter == null) {
+            return;
+        }
+        checkRange(filter.birthFrom(), filter.birthTo(), "birthFrom", "birthTo");
+        checkRange(filter.createdFrom(), filter.createdTo(), "createdFrom", "createdTo");
+    }
+
+    private void checkRange(LocalDate from, LocalDate to, String fromName, String toName) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException(
+                    "El rango de fechas no es válido: '" + fromName + "' (" + from + ") es posterior a '"
+                            + toName + "' (" + to + ")");
+        }
     }
 
     private Customer getOrThrow(Long id) {

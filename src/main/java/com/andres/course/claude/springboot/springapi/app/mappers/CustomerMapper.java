@@ -21,11 +21,13 @@ public class CustomerMapper {
                 entity.getAddress(),
                 entity.getCity(),
                 entity.getBirthDate(),
-                entity.isActive()
+                entity.isActive(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
         );
     }
 
-    /** dto -> entity (nueva; el id y las fechas los asigna el sistema) */
+    /** dto -> entity (nueva; el id y las fechas de auditoría los asigna el sistema) */
     public Customer toEntity(CustomerDto dto) {
         if (dto == null) {
             return null;
@@ -35,7 +37,7 @@ public class CustomerMapper {
         return entity;
     }
 
-    /** Copia los campos editables del dto sobre una entidad existente. */
+    /** Copia los campos editables del dto sobre una entidad existente (nunca las fechas de auditoría). */
     public void updateEntity(CustomerDto dto, Customer entity) {
         entity.setName(dto.name());
         entity.setLastName(dto.lastName());

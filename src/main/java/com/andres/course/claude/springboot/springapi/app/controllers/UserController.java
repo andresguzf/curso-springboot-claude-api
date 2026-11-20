@@ -1,8 +1,13 @@
 package com.andres.course.claude.springboot.springapi.app.controllers;
 
 import com.andres.course.claude.springboot.springapi.app.dto.UserDto;
+import com.andres.course.claude.springboot.springapi.app.dto.UserFilter;
 import com.andres.course.claude.springboot.springapi.app.services.UserService;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.List;
 
 /** Administración de usuarios: solo rol ADMIN (ver SecurityConfig). */
 @RestController
@@ -29,10 +33,14 @@ public class UserController {
         this.userService = userService;
     }
 
-    // GET /api/users -> 200 con la lista de usuarios (sin password).
+    // GET /api/users -> 200 con una página de usuarios (sin password):
+    // {content, page:{size, number, totalElements, totalPages}}.
+    // Filtros opcionales (UserFilter): ?search= (email), ?role=USER|ADMIN, ?enabled=true|false.
+    // ?page= (desde 0), ?size= (10 por defecto, máximo 100) y ?sort=campo,asc|desc (por defecto email).
     @GetMapping
-    public List<UserDto> findAll() {
-        return userService.findAll();
+    public PagedModel<UserDto> findPage(@ParameterObject UserFilter filter,
+                                        @ParameterObject @PageableDefault(sort = "email") Pageable pageable) {
+        return new PagedModel<>(userService.findPage(filter, pageable));
     }
 
     // GET /api/users/{id} -> 200, o 404 si no existe.

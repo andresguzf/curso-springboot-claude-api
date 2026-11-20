@@ -1,6 +1,7 @@
 package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.UserDto;
+import com.andres.course.claude.springboot.springapi.app.dto.UserFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.DuplicateResourceException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
@@ -8,14 +9,22 @@ import com.andres.course.claude.springboot.springapi.app.mappers.UserMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Role;
 import com.andres.course.claude.springboot.springapi.app.models.User;
 import com.andres.course.claude.springboot.springapi.app.repositories.UserRepository;
+import com.andres.course.claude.springboot.springapi.app.repositories.UserSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService {
+
+    /** Campos por los que se puede ordenar el listado ({@code ?sort=campo,asc|desc}); nunca password. */
+    static final Set<String> SORT_FIELDS = Set.of("id", "email", "role", "enabled", "createdAt");
+
+    static final String LAST_ADMIN_MESSAGE = "Debe quedar al menos un administrador habilitado";
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -32,11 +41,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDto> findAll() {
-        return userRepository.findAll()
-                .stream()
-                .map(userMapper::toDto)
-                .toList();
+    public Page<UserDto> findPage(UserFilter filter, Pageable pageable) {
+        return userRepository.findAll(UserSpecifications.of(filter), Pageables.checked(pageable, SORT_FIELDS))
+                .map(userMapper::toDto);
     }
 
     @Override
@@ -82,6 +89,10 @@ public class UserServiceImpl implements UserService {
         if (editingSelf && (dto.role() != Role.ADMIN || disabling)) {
             throw new OperationNotAllowedException("No puedes quitarte el rol ADMIN ni deshabilitar tu propio usuario");
         }
+        // ¿Sigue siendo un ADMIN habilitado después del cambio? (enabled null conserva el estado actual)
+        boolean staysActiveAdmin = dto.role() == Role.ADMIN
+                && (dto.enabled() == null ? entity.isEnabled() : dto.enabled());
+        ensureNotLastActiveAdmin(entity, staysActiveAdmin);
 
         boolean roleChanged = entity.getRole() != dto.role();
         boolean passwordChanged = dto.password() != null && !dto.password().isBlank();
@@ -105,8 +116,24 @@ public class UserServiceImpl implements UserService {
         if (entity.getEmail().equals(currentUserEmail)) {
             throw new OperationNotAllowedException("No puedes borrar tu propio usuario");
         }
+        ensureNotLastActiveAdmin(entity, false);
         // Sus refresh tokens se borran en la base de datos por ON DELETE CASCADE.
         userRepository.delete(entity);
+    }
+
+    /**
+     * Impide dejar el sistema sin administradores: si el usuario es hoy un ADMIN habilitado y deja
+     * de serlo (degradado, deshabilitado o borrado), debe quedar al menos otro ADMIN habilitado.
+     *
+     * Con la regla de "uno mismo" normalmente quien actúa es otro admin habilitado, así que hay al
+     * menos dos. Pero el rol viaja en un JWT stateless: un admin recién degradado o deshabilitado
+     * conserva el rol ADMIN en su token hasta 15 minutos. Esta regla cubre ese intervalo.
+     */
+    private void ensureNotLastActiveAdmin(User target, boolean staysActiveAdmin) {
+        boolean isActiveAdmin = target.getRole() == Role.ADMIN && target.isEnabled();
+        if (isActiveAdmin && !staysActiveAdmin && userRepository.countByRoleAndEnabledTrue(Role.ADMIN) <= 1) {
+            throw new OperationNotAllowedException(LAST_ADMIN_MESSAGE);
+        }
     }
 
     private User getOrThrow(Long id) {

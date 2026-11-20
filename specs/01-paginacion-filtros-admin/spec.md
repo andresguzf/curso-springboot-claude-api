@@ -4,7 +4,7 @@
 |---|---|
 | Fase | A (backend) |
 | Repo | `3-spring-api` |
-| Estado | Pendiente |
+| Estado | Hecha |
 | Depende de | — |
 | La necesitan | Specs 04 (clientes) y 05 (usuarios) del frontend (`4-react/specs/`) |
 | Constitución | [`../constitution.md`](../constitution.md) |
@@ -102,4 +102,4 @@ frontend `4-react`, que se construye después de esta spec.
 
 ## Preguntas abiertas
 
-- ¿Se reparte `created_at` en el seed (`data.sql`) para poder probar el filtro por fecha de alta? Propuesta: sí, solo para bases nuevas (tarea A-07, opcional).
+- ~~¿Se reparte `created_at` en el seed (`data.sql`) para poder probar el filtro por fecha de alta?~~ Resuelta: sí (A-07). Las bases nuevas reciben fechas de alta repartidas en 120 días; el README trae un `UPDATE` para bases existentes.

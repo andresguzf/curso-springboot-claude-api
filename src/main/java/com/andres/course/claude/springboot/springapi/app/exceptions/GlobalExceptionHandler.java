@@ -89,6 +89,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // 400: campos del DTO que no pasan Bean Validation, con su mensaje por campo.
+    // También query params de un record de filtros (CustomerFilter, UserFilter) que no se pueden
+    // convertir al tipo del campo (p. ej. ?birthFrom=ayer o ?role=FOO): esos errores de binding traen
+    // un mensaje técnico en inglés, así que se reemplaza por uno en español.
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
                                                                   HttpHeaders headers,
@@ -96,7 +99,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                                                   WebRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
-                .forEach(error -> errors.putIfAbsent(error.getField(), error.getDefaultMessage()));
+                .forEach(error -> errors.putIfAbsent(error.getField(), error.isBindingFailure()
+                        ? "El valor '" + error.getRejectedValue() + "' no tiene un formato válido"
+                        : error.getDefaultMessage()));
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
                 "Hay campos con errores de validación");
         problem.setTitle("Error de validación");

@@ -8,15 +8,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserMapper {
 
-    /** entity -> dto (sin password) */
+    /** entity -> dto (sin password, con las fechas de auditoría) */
     public UserDto toDto(User entity) {
         if (entity == null) {
             return null;
         }
-        return new UserDto(entity.getId(), entity.getEmail(), null, entity.getRole(), entity.isEnabled());
+        return new UserDto(entity.getId(), entity.getEmail(), null, entity.getRole(), entity.isEnabled(),
+                entity.getCreatedAt(), entity.getUpdatedAt());
     }
 
-    /** dto -> entity (nueva; el id, el password y las fechas los asigna el sistema) */
+    /** dto -> entity (nueva; el id, el password y las fechas de auditoría los asigna el sistema) */
     public User toEntity(UserDto dto) {
         if (dto == null) {
             return null;
@@ -26,7 +27,7 @@ public class UserMapper {
         return entity;
     }
 
-    /** Copia los campos editables del dto sobre una entidad existente. */
+    /** Copia los campos editables del dto sobre una entidad existente (nunca las fechas de auditoría). */
     public void updateEntity(UserDto dto, User entity) {
         entity.setEmail(dto.email());
         entity.setRole(dto.role());
