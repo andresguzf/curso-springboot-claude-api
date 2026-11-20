@@ -39,11 +39,12 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test -Dtest=PageablesTest`
   - Commit: "Agrega validación de orden permitido y desempate para listados paginados"
 
-- [ ] **A-05** Service de clientes paginado y con validación de rangos
+- [x] **A-05** Service de clientes paginado y con validación de rangos
   - Depende de: A-03, A-04
   - Cubre: RF-01-02, RF-01-05, RNF-01-01, RNF-01-02
-  - Archivos: `app/services/CustomerService.java`, `app/services/CustomerServiceImpl.java`
+  - Archivos: `app/services/CustomerService.java`, `app/services/CustomerServiceImpl.java`, `test/services/CustomerServiceImplTest.java` (nuevo)
   - Hecho cuando: existen `Page<CustomerDto> findPage(CustomerFilter, Pageable)` y `List<CustomerDto> findAll(CustomerFilter, Sort)`; un rango con `from > to` lanza `IllegalArgumentException` (400)
+  - Nota: `findAll(String, Boolean)` se conserva (delegando en el método nuevo) porque el controller aún lo usa; se elimina en A-06
   - Verificación: `./mvnw test`
   - Commit: "Agrega listado paginado y filtrado al servicio de clientes"
 
@@ -51,7 +52,7 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Depende de: A-05
   - Cubre: RF-01-02, RF-01-03, RF-01-04, RF-01-05, RF-01-06
   - Archivos: `app/controllers/CustomerController.java`, `src/main/resources/application.properties`, `app/config/WebConfig.java` (solo si hace falta el customizer), `test/controllers/CustomerControllerSecurityTest.java`
-  - Hecho cuando: JSON devuelve `content` + `page`; `format=csv|xlsx|pdf|xml` llama a `export` con todo el resultado filtrado; `size=1000` llega como 100; `sort=password` y `birthFrom=ayer` responden 400; Swagger revisado
+  - Hecho cuando: JSON devuelve `content` + `page`; `format=csv|xlsx|pdf|xml` llama a `export` con todo el resultado filtrado; `size=1000` llega como 100; `sort=password` y `birthFrom=ayer` responden 400; se elimina `CustomerService.findAll(String, Boolean)` (ya sin uso); Swagger revisado
   - Verificación: `./mvnw test`; con la app arriba, `curl -b cookies.txt "localhost:8080/api/customers?page=0&size=5&sort=lastName,desc&city=san"` y `curl -b cookies.txt -o c.csv "localhost:8080/api/customers?city=san&format=csv"`
   - Commit: "Agrega paginación y filtros por fecha y ciudad al listado de clientes"
 

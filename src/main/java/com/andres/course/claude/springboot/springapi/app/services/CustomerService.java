@@ -1,6 +1,10 @@
 package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
+import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -8,11 +12,27 @@ public interface CustomerService {
 
     /**
      * Lista los clientes ordenados por id, con filtros opcionales.
+     * Se mantiene mientras el controller la use; se elimina en la tarea A-06 (lo reemplazan
+     * {@link #findPage} y {@link #findAll(CustomerFilter, Sort)}).
      *
      * @param search texto a buscar en nombre, apellido, email o ciudad (null o vacío: sin filtro)
      * @param active estado del cliente (null: todos)
      */
     List<CustomerDto> findAll(String search, Boolean active);
+
+    /**
+     * Página de clientes que cumplen el filtro.
+     *
+     * @throws IllegalArgumentException si el orden no está permitido o un rango de fechas está invertido (400)
+     */
+    Page<CustomerDto> findPage(CustomerFilter filter, Pageable pageable);
+
+    /**
+     * Todos los clientes que cumplen el filtro, sin paginar (para la exportación).
+     *
+     * @throws IllegalArgumentException si el orden no está permitido o un rango de fechas está invertido (400)
+     */
+    List<CustomerDto> findAll(CustomerFilter filter, Sort sort);
 
     CustomerDto findById(Long id);
 

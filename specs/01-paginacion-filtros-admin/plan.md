@@ -89,7 +89,7 @@ Lista blanca de orden: `id, email, role, enabled, createdAt`. Orden por defecto:
 | `src/main/resources/application.properties` | propiedades de `Pageable` |
 | `src/main/resources/data.sql` | (opcional) `created_at` repartido |
 | `test/controllers/CustomerControllerSecurityTest.java`, `test/controllers/UserControllerTest.java`, `test/controllers/AuthControllerTest.java` | ajustes de constructores y tests nuevos |
-| `test/services/PageablesTest.java`, `test/services/UserServiceImplTest.java` | nuevos |
+| `test/services/PageablesTest.java`, `test/services/CustomerServiceImplTest.java`, `test/services/UserServiceImplTest.java` | nuevos |
 | `README.md`, `CLAUDE.md` | contrato, cambio incompatible, regla del último admin, excepciones a la convención |
 
 ## 4. Riesgos
