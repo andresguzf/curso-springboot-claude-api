@@ -23,7 +23,7 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw test`
   - Commit: "Expone las fechas de auditoría como solo lectura en el DTO de usuarios"
 
-- [ ] **A-03** Record de filtros y Specifications de clientes
+- [x] **A-03** Record de filtros y Specifications de clientes
   - Depende de: A-01
   - Cubre: RF-01-05, RNF-01-01
   - Archivos: `app/dto/CustomerFilter.java`, `app/repositories/CustomerSpecifications.java`
