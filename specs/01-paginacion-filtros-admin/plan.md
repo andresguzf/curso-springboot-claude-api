@@ -79,6 +79,7 @@ Lista blanca de orden: `id, email, role, enabled, createdAt`. Orden por defecto:
 | `app/dto/CustomerFilter.java`, `app/dto/UserFilter.java` | nuevos records de parámetros |
 | `app/repositories/CustomerSpecifications.java` | + `cityContains`, `birthDateBetween`, `createdBetween`, `of(CustomerFilter)` |
 | `app/repositories/UserSpecifications.java` | nuevo: `emailContains`, `hasRole`, `hasEnabled`, `of(UserFilter)` |
+| `app/repositories/LikePatterns.java` | nuevo (A-08): `contains(text)` y `ESCAPE`, el escape de LIKE que comparten clientes y usuarios (antes `escapeLike` privado en `CustomerSpecifications`) |
 | `app/repositories/UserRepository.java` | + `JpaSpecificationExecutor<User>`, + `countByRoleAndEnabledTrue(Role)` |
 | `app/services/Pageables.java` | nuevo: lista blanca y desempate |
 | `app/services/CustomerService(Impl).java` | `findPage(filter, pageable)`, `findAll(filter, sort)`, validación de rangos |
@@ -89,7 +90,7 @@ Lista blanca de orden: `id, email, role, enabled, createdAt`. Orden por defecto:
 | `src/main/resources/application.properties` | propiedades de `Pageable` |
 | `src/main/resources/data.sql` | (opcional) `created_at` repartido |
 | `test/controllers/CustomerControllerSecurityTest.java`, `test/controllers/UserControllerTest.java`, `test/controllers/AuthControllerTest.java` | ajustes de constructores y tests nuevos |
-| `test/services/PageablesTest.java`, `test/services/CustomerServiceImplTest.java`, `test/services/UserServiceImplTest.java` | nuevos |
+| `test/services/PageablesTest.java`, `test/services/CustomerServiceImplTest.java`, `test/services/UserServiceImplTest.java`, `test/repositories/LikePatternsTest.java` | nuevos |
 | `README.md`, `CLAUDE.md` | contrato, cambio incompatible, regla del último admin, excepciones a la convención |
 
 ## 4. Riesgos

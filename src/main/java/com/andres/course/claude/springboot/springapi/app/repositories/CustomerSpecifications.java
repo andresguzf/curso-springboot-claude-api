@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.andres.course.claude.springboot.springapi.app.repositories.LikePatterns.ESCAPE;
+
 /**
  * Filtros dinámicos del listado de clientes. Cada filtro sin valor no restringe nada,
  * así se combinan solo los que vienen en la petición.
@@ -20,8 +22,6 @@ import java.util.List;
  * falla con parámetros nulos (Hibernate no sabe su tipo y termina en errores como lower(bytea)).
  */
 public final class CustomerSpecifications {
-
-    private static final char ESCAPE = '\\';
 
     private CustomerSpecifications() {
     }
@@ -32,7 +32,7 @@ public final class CustomerSpecifications {
             if (!StringUtils.hasText(search)) {
                 return cb.conjunction();
             }
-            String pattern = "%" + escapeLike(search.trim().toLowerCase()) + "%";
+            String pattern = LikePatterns.contains(search);
             return cb.or(
                     cb.like(cb.lower(root.get("name")), pattern, ESCAPE),
                     cb.like(cb.lower(root.get("lastName")), pattern, ESCAPE),
@@ -52,8 +52,7 @@ public final class CustomerSpecifications {
             if (!StringUtils.hasText(city)) {
                 return cb.conjunction();
             }
-            String pattern = "%" + escapeLike(city.trim().toLowerCase()) + "%";
-            return cb.like(cb.lower(root.get("city")), pattern, ESCAPE);
+            return cb.like(cb.lower(root.get("city")), LikePatterns.contains(city), ESCAPE);
         };
     }
 
@@ -100,10 +99,5 @@ public final class CustomerSpecifications {
                 cityContains(f.city()),
                 birthDateBetween(f.birthFrom(), f.birthTo()),
                 createdBetween(f.createdFrom(), f.createdTo()));
-    }
-
-    // Escapa los comodines de LIKE para que "%" o "_" en el texto se busquen literalmente.
-    private static String escapeLike(String text) {
-        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

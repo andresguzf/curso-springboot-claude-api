@@ -65,10 +65,10 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Nota: se verificó en una base temporal (`spring_api_a07`, borrada al terminar) para no recrear la base local del usuario; el `UPDATE` del README también se probó ahí
   - Commit: "Reparte las fechas de alta del seed para probar los filtros por fecha"
 
-- [ ] **A-08** Filtros y Specifications de usuarios
+- [x] **A-08** Filtros y Specifications de usuarios
   - Depende de: A-02
   - Cubre: RF-01-07, RNF-01-01
-  - Archivos: `app/dto/UserFilter.java`, `app/repositories/UserSpecifications.java`, `app/repositories/UserRepository.java`
+  - Archivos: `app/dto/UserFilter.java`, `app/repositories/UserSpecifications.java`, `app/repositories/UserRepository.java`, `app/repositories/LikePatterns.java` (nuevo, escape de LIKE compartido), `app/repositories/CustomerSpecifications.java` (usa `LikePatterns`), `test/repositories/LikePatternsTest.java` (nuevo)
   - Hecho cuando: `UserRepository` extiende `JpaSpecificationExecutor<User>`; existen `emailContains` (LIKE escapado), `hasRole`, `hasEnabled` y `of(UserFilter)`
   - Verificación: `./mvnw -q -DskipTests compile` y `./mvnw test`
   - Commit: "Agrega filtros por email, rol y estado a los usuarios"
