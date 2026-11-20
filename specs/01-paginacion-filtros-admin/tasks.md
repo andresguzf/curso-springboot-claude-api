@@ -31,7 +31,7 @@ Rutas: `app/` = `src/main/java/com/andres/course/claude/springboot/springapi/app
   - Verificación: `./mvnw -q -DskipTests compile` y `./mvnw test`
   - Commit: "Agrega filtros por ciudad y por rangos de fecha a las Specifications de clientes"
 
-- [ ] **A-04** Utilidad `Pageables` con lista blanca de orden
+- [x] **A-04** Utilidad `Pageables` con lista blanca de orden
   - Depende de: —
   - Cubre: RF-01-04, RNF-01-02
   - Archivos: `app/services/Pageables.java`, `test/services/PageablesTest.java`
