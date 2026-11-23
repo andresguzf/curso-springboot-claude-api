@@ -30,6 +30,7 @@ Usa siempre el wrapper `./mvnw`.
 ## Configuración
 
 - `application.properties` importa `.env` de la raíz con `spring.config.import=optional:file:.env[.properties]`; la ruta es relativa al directorio de trabajo, así que la app debe ejecutarse desde la raíz del proyecto.
+- Base de datos: el `.env` puede apuntar al PostgreSQL local o a **Supabase** por el **Session pooler** (`jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres`, usuario `postgres.<ref>`); no uses el Transaction pooler (6543, falla con sentencias preparadas). El seed (`data.sql` + `AdminUserInitializer`) se carga solo en la base vacía. `ApplicationTests` usa la base del `.env`.
 - Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (con valores por defecto genéricos de desarrollo); `JWT_SECRET` (Base64, ≥ 256 bits, **sin valor por defecto**: la app no arranca sin ella; `openssl rand -base64 32`), `JWT_COOKIE_SECURE` (por defecto `true`; `false` en local para Postman/curl sobre http), `ADMIN_EMAIL` y `ADMIN_PASSWORD` (admin inicial). `.env` está en `.gitignore`; la plantilla versionada es `.env.example`.
 - El admin inicial lo crea `config/AdminUserInitializer` al arrancar si no existe un usuario con `ADMIN_EMAIL` (sin `ADMIN_PASSWORD` solo avisa). No pongas usuarios en `data.sql`: serían contraseñas/hashes versionados.
 - `spring.jpa.hibernate.ddl-auto=update`: el esquema lo crea Hibernate a partir de las entities (no hay Flyway).

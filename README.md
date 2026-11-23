@@ -20,7 +20,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 ## Requisitos
 
 - JDK 25
-- PostgreSQL, o Docker para levantarlo en un contenedor
+- PostgreSQL: local, en un contenedor de Docker o en la nube con [Supabase](https://supabase.com)
 
 ## Puesta en marcha
 
@@ -54,6 +54,19 @@ Proyecto del curso de Spring Boot con Claude Code.
    ```
 
    La aplicación lee el `.env` de la raíz del proyecto al arrancar. Este archivo no se sube al repositorio.
+
+   **Con Supabase** (PostgreSQL en la nube, sin instalar nada) salta el paso 3. En el proyecto de Supabase, **Connect** → tipo **JDBC** → método **Session pooler**, y copia los datos al `.env`:
+
+   ```properties
+   DB_URL=jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres
+   DB_USERNAME=postgres.<ref-del-proyecto>
+   DB_PASSWORD=<contraseña-de-la-base>
+   ```
+
+   - La URL debe empezar con `jdbc:` (Supabase también muestra la forma `postgresql://…`, que Spring no acepta).
+   - **Session pooler** (puerto 5432) y no la conexión directa, que en el plan gratuito solo funciona por IPv6, ni el **Transaction pooler** (puerto 6543), que no soporta bien las sentencias preparadas de Hibernate.
+   - El primer arranque contra la base vacía crea las tablas, carga los 20 clientes de `data.sql` y el administrador del `.env`, igual que en local.
+   - `ApplicationTests` (`./mvnw test`) se conecta a la base del `.env`: con Supabase, los tests también la usan (solo leen y el seed no se repite).
 
 3. Levanta PostgreSQL (si no lo tienes instalado, con Docker):
 
