@@ -21,7 +21,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
   - Verificación: `./mvnw test`; `docker build -t cartera-api .`; `docker run --rm cartera-api` con `id` y `ls -a /app` (sin `.env`, usuario no root); `docker run --env-file .env -e SPRING_PROFILES_ACTIVE=prod -p 8080:8080 cartera-api` contra Supabase: health UP y login 200; `docker stop` muestra el apagado ordenado en el log
   - Commit: "Agrega el Dockerfile multi-stage del backend"
 
-- [ ] **I-03** Docker Compose local con PostgreSQL
+- [x] **I-03** Docker Compose local con PostgreSQL
   - Depende de: I-02
   - Cubre: RF-09-04, RNF-09-01, RNF-09-02, RNF-09-04
   - Archivos: `compose.yaml`
