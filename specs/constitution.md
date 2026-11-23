@@ -35,7 +35,7 @@ al proyecto `2-spring-di`: **no se edita desde aquí**).
 - CSRF activo con cookie `XSRF-TOKEN` y cabecera `X-XSRF-TOKEN` (solo el login está exento).
 - Reglas de acceso en `SecurityConfig` (no `@PreAuthorize`). `GET /api/customers/**` → USER/ADMIN; resto de `/api/customers/**` y `/api/users/**` → ADMIN.
 - Reglas de administradores en `UserServiceImpl`: nadie se borra, se deshabilita ni se quita ADMIN a sí mismo, y (spec 01) siempre queda al menos un ADMIN habilitado.
-- No se agrega CORS: el frontend usa el mismo origen (proxy de Vite).
+- No se agrega CORS: el frontend usa el mismo origen (proxy de Vite en local; rewrite de Vercel hacia Render en la nube, spec 09).
 
 ## 4. Privacidad
 
@@ -56,6 +56,6 @@ Una tarea solo se marca como hecha cuando:
 
 ## 6. Git
 
-- Rama de trabajo de la spec 01: `feature/paginacion-filtros` (la crea la primera tarea).
+- Rama de trabajo de la spec 01: `feature/paginacion-filtros`; de la spec 09: `feature/docker` (las crea la primera tarea de cada spec).
 - Un commit por tarea, mensaje en español e imperativo ("Agrega…", "Expone…"), con el trailer `Co-Authored-By` que indique la sesión.
 - Sin push ni merge a `main` sin el OK explícito del usuario al cerrar la fase.
