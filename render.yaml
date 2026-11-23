@@ -1,0 +1,43 @@
+# Blueprint de Render (infraestructura como código): New → Blueprint → elegir este repositorio.
+# Referencia: https://render.com/docs/blueprint-spec
+#
+# La base de datos NO se crea aquí: es la de Supabase (Session pooler), la misma de siempre.
+# Los secretos nunca van en este archivo: los marcados con "sync: false" los pide Render
+# en el panel al crear el servicio (y solo esa vez; después se editan en Environment).
+services:
+  - type: web
+    name: cartera-api # define la URL: https://cartera-api.onrender.com (si el nombre está libre)
+    runtime: docker # construye con el Dockerfile de la raíz
+    dockerfilePath: ./Dockerfile
+    plan: free # 0,1 CPU y 512 MB; se duerme tras 15 min sin tráfico
+    region: oregon # la misma región de AWS que el pooler de Supabase (us-west-2): menos latencia
+    branch: main
+    autoDeployTrigger: commit # despliega con cada push a main
+    healthCheckPath: /actuator/health
+    envVars:
+      # --- Configuración (no es secreta) ---
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JWT_COOKIE_SECURE
+        value: "true" # Render y Vercel sirven HTTPS
+      # PORT lo asigna Render (10000) y Spring lo lee con server.port=${PORT:8080}.
+
+      # --- Base de datos: Supabase → Connect → JDBC → Session pooler ---
+      - key: DB_URL
+        sync: false # jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres
+      - key: DB_USERNAME
+        sync: false # postgres.<ref-del-proyecto>
+      - key: DB_PASSWORD
+        sync: false
+
+      # --- Seguridad ---
+      # Render genera una clave aleatoria de 256 bits en Base64: justo lo que pide app.jwt.secret.
+      # Es distinta a la de desarrollo, así un token local no sirve en producción.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # --- Administrador inicial (solo si aún no existe en Supabase) ---
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

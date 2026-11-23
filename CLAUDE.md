@@ -26,6 +26,7 @@ Usa siempre el wrapper `./mvnw`.
 - Consultar la base: `docker exec -it 3-spring-api-db psql -U postgres -d spring_api`
 - pgAdmin: contenedor `3-spring-api-pgadmin` en http://localhost:5050 (comando completo en el README). Comparte la red `spring-api-net` con PostgreSQL, por eso el host del servidor es `3-spring-api-db` y no `localhost`. El servidor se registra desde `docker/pgadmin/servers.json` **solo la primera vez** que se crea el volumen `3-spring-api-pgadmin-data`; para recargarlo, borra el contenedor y el volumen.
 - Con la app arriba: Swagger UI en `/swagger-ui.html`, health en `/actuator/health`.
+- Docker (spec 09): `docker build -t cartera-api .` (compila con `-DskipTests`: corre `./mvnw test` antes); `docker run --rm --env-file .env -e SPRING_PROFILES_ACTIVE=prod -p 8080:8080 cartera-api` contra Supabase; `docker compose up --build` levanta backend + PostgreSQL propio (perfil de desarrollo, con seed; sin publicar el 5432; `API_PORT` cambia el puerto) y `docker compose down -v` lo borra todo.
 
 ## Configuración
 
@@ -34,6 +35,9 @@ Usa siempre el wrapper `./mvnw`.
 - Variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` (con valores por defecto genéricos de desarrollo); `JWT_SECRET` (Base64, ≥ 256 bits, **sin valor por defecto**: la app no arranca sin ella; `openssl rand -base64 32`), `JWT_COOKIE_SECURE` (por defecto `true`; `false` en local para Postman/curl sobre http), `ADMIN_EMAIL` y `ADMIN_PASSWORD` (admin inicial). `.env` está en `.gitignore`; la plantilla versionada es `.env.example`.
 - El admin inicial lo crea `config/AdminUserInitializer` al arrancar si no existe un usuario con `ADMIN_EMAIL` (sin `ADMIN_PASSWORD` solo avisa). No pongas usuarios en `data.sql`: serían contraseñas/hashes versionados.
 - `spring.jpa.hibernate.ddl-auto=update`: el esquema lo crea Hibernate a partir de las entities (no hay Flyway).
+- Puerto: `server.port=${PORT:8080}` (Render asigna `PORT`).
+- **Perfil `prod`** (`application-prod.properties`, `SPRING_PROFILES_ACTIVE=prod`): `ddl-auto=validate`, sin seed (`spring.sql.init.mode=never`), sin SQL en el log, Swagger desactivado, datasource sin valores por defecto (sin `DB_URL` falla con `'url' must start with "jdbc"`), Hikari con `DB_POOL_SIZE` (5) y `server.forward-headers-strategy=framework`. `ProdProfileTest` comprueba esos valores: si cambias el perfil, actualízalo. Con `validate`, un cambio en una entity no arranca en `prod` hasta que exista la migración.
+- Docker y nube: `Dockerfile` multi-stage (JRE 25, usuario `spring`, `TZ=America/Santiago`, `-XX:MaxRAMPercentage=75`), `.dockerignore` (sin `.env`), `compose.yaml` y `render.yaml` (Render, plan gratis, región `oregon` como el pooler de Supabase; secretos con `sync: false` y `JWT_SECRET` con `generateValue`). La base de producción es Supabase. El frontend va en Vercel con un rewrite de `/api/*` a Render: mismo origen, por eso **no hay CORS** ni cookies `SameSite=None`.
 - Seed: `src/main/resources/data.sql` corre en cada arranque (`spring.sql.init.mode=always` + `spring.jpa.defer-datasource-initialization=true`, para que corra después de que Hibernate cree las tablas), pero solo inserta los 20 clientes si la tabla está vacía (`INSERT ... SELECT ... FROM (VALUES ...) WHERE NOT EXISTS`). No uses `ON CONFLICT DO NOTHING`: cada fila descartada igual avanza la secuencia del `id`, y con DevTools reiniciando la app los IDs saltan de a 20. Usa nombres de **columna** (`last_name`, `created_at`, `update_at`) y asigna `created_at` a mano, porque `@PrePersist` no corre en SQL directo: si cambias columnas de la entity, actualiza el seed o la app no arranca.
 
 ## Arquitectura
@@ -104,5 +108,6 @@ Los cambios que necesita el dashboard React (`../4-react`) se especifican con SD
 
 - `specs/constitution.md`: reglas del backend que toda spec y tarea debe respetar.
 - `specs/01-paginacion-filtros-admin/`: `spec.md` (qué y por qué), `plan.md` (contrato y decisiones) y `tasks.md` (tareas `A-01` … `A-11`): fechas de auditoría de solo lectura, listados paginados con filtros (clientes y usuarios) sin romper la exportación, y protección del último ADMIN.
+- `specs/09-docker-despliegue/` (tareas `I-01` … `I-06`, también toca `4-react`): perfil `prod`, `PORT`, Docker, Compose, blueprint de Render y rewrite de Vercel.
 
-Las tareas se ejecutan una a una desde la sesión de `4-react` con su skill `sdd-next-task` (índice global y estado en `../4-react/specs/README.md`). La spec 01 está **hecha** (rama `feature/paginacion-filtros`). Si cambias el contrato de la API, actualiza en el mismo cambio la spec, este archivo y el README.
+Las tareas se ejecutan una a una desde la sesión de `4-react` con su skill `sdd-next-task` (índice global y estado en `../4-react/specs/README.md`). Las specs 01 (rama `feature/paginacion-filtros`) y 09 (rama `feature/docker`) están **hechas**. Si cambias el contrato de la API, actualiza en el mismo cambio la spec, este archivo y el README.

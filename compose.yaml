@@ -1,0 +1,49 @@
+# Backend + PostgreSQL en Docker, para desarrollo local:
+#   docker compose up --build      (Ctrl+C para detener)
+#   docker compose down            (borra los contenedores; los datos quedan en el volumen)
+#   docker compose down -v         (borra también la base)
+#
+# Los secretos salen del .env de esta carpeta: Docker Compose lo lee solo para reemplazar las
+# ${VARIABLES} de este archivo. Al contenedor solo llegan las variables listadas aquí.
+# La base de Supabase no se toca: en local se usa la de este compose (con el seed de ejemplo).
+name: cartera
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: spring_api
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      # postgres 18 guarda los datos en /var/lib/postgresql/18/docker: se monta la carpeta padre.
+      - db-data:/var/lib/postgresql
+    # Sin "ports": solo el backend la usa, dentro de la red de compose. Así no choca con otro
+    # PostgreSQL que ya esté en el 5432 de tu máquina.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spring_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    image: cartera-api
+    depends_on:
+      db:
+        condition: service_healthy # espera a que PostgreSQL acepte conexiones
+    ports:
+      # El frontend (npm run dev) reenvía /api a localhost:8080. API_PORT cambia el puerto de tu máquina.
+      - "${API_PORT:-8080}:8080"
+    environment:
+      # Sin SPRING_PROFILES_ACTIVE: perfil de desarrollo, con el seed de los 20 clientes.
+      DB_URL: jdbc:postgresql://db:5432/spring_api # "db" es el nombre del servicio, no localhost
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en el archivo .env}
+      JWT_COOKIE_SECURE: "false" # http://localhost; en Render (HTTPS) va en true
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ejemplo.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+volumes:
+  db-data:

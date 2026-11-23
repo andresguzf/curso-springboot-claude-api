@@ -1,0 +1,28 @@
+# Lo que NO entra al contexto de build de Docker.
+
+# Secretos: la configuración llega por variables de entorno, nunca dentro de la imagen.
+.env
+.env.*
+!.env.example
+
+# Resultados de compilación: la imagen compila su propio JAR.
+target/
+
+# Git, IDE y herramientas
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+*.iml
+.claude
+
+# Documentación y archivos que la imagen no necesita
+specs/
+docker/
+*.md
+HELP.md
+compose.yaml
+render.yaml
+Dockerfile
+.dockerignore
