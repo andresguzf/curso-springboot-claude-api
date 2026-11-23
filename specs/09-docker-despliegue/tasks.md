@@ -29,7 +29,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
   - Verificación: `./mvnw test`; `docker compose up --build -d`; `docker compose ps` (db healthy); login y `GET /api/customers?size=1` → `totalElements` 20; prueba en el navegador desde `http://localhost:5173`; `docker compose down` (y `down -v` para borrar el volumen de prueba)
   - Commit: "Agrega Docker Compose con el backend y PostgreSQL"
 
-- [ ] **I-04** Blueprint de Render
+- [x] **I-04** Blueprint de Render
   - Depende de: I-02
   - Cubre: RF-09-05, RNF-09-01
   - Archivos: `render.yaml`
