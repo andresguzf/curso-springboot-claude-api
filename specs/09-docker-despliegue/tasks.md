@@ -5,7 +5,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
 [frontend](../../../4-react/specs/constitution.md). Ramas: `feature/docker` en `3-spring-api`
 (la crea I-01) y `feature/dashboard` en `4-react`.
 
-- [ ] **I-01** Perfil `prod` y puerto configurable
+- [x] **I-01** Perfil `prod` y puerto configurable
   - Depende de: A-11, H-04
   - Cubre: RF-09-01, RF-09-02, RNF-09-03, RNF-09-04
   - Archivos: `src/main/resources/application.properties`, `src/main/resources/application-prod.properties`, `src/test/java/.../ProdProfileTest.java`
