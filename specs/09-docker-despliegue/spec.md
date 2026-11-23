@@ -4,7 +4,7 @@
 |---|---|
 | Fase | I |
 | Repo | `3-spring-api` (I-01 … I-04, I-06) y `4-react` (I-05, I-06) |
-| Estado | En curso (1/6) |
+| Estado | En curso (2/6) |
 | Depende de | Spec 01 (backend) y spec 08 (frontend) |
 | La necesitan | — (el despliegue real será una fase posterior) |
 | Constitución | [backend](../constitution.md) · [frontend](../../../4-react/specs/constitution.md) |

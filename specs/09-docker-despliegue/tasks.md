@@ -13,7 +13,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
   - Verificación: `./mvnw test`; `./mvnw -DskipTests package` y `java -jar` con el `.env` (Supabase) y `SPRING_PROFILES_ACTIVE=prod PORT=9090`: `/actuator/health` → UP en 9090, `/swagger-ui.html` → 404, login → 200, log sin SQL; y otra vez sin `DB_URL` → no arranca
   - Commit: "Agrega el perfil prod y el puerto configurable con PORT"
 
-- [ ] **I-02** Imagen Docker del backend
+- [x] **I-02** Imagen Docker del backend
   - Depende de: I-01
   - Cubre: RF-09-03, RNF-09-01, RNF-09-02, RNF-09-03
   - Archivos: `Dockerfile`, `.dockerignore`
