@@ -37,7 +37,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
   - Verificación: `./mvnw test`; YAML válido y revisado contra la referencia de blueprints de Render; `grep` sin secretos
   - Commit: "Agrega el blueprint de Render para el backend"
 
-- [ ] **I-05** Rewrite de Vercel en el frontend
+- [x] **I-05** Rewrite de Vercel en el frontend
   - Depende de: I-04
   - Cubre: RF-09-06
   - Repo: `4-react`
