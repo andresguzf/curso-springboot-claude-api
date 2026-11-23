@@ -19,7 +19,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 
 ## Requisitos
 
-- JDK 25
+- JDK 25 (o solo Docker, ver [«Docker y producción»](#docker-y-producción))
 - PostgreSQL: local, en un contenedor de Docker o en la nube con [Supabase](https://supabase.com)
 
 ## Puesta en marcha
@@ -112,6 +112,69 @@ FROM (VALUES (1, 120), (2, 110), (3, 100), (4, 90), (5, 80), (6, 70), (7, 62), (
 WHERE c.id = d.id;
 SQL
 ```
+
+## Docker y producción
+
+La misma imagen sirve en local y en la nube: lo que cambia entre entornos son las **variables de entorno** y el perfil `prod`. Detalle y decisiones en la [spec 09](specs/09-docker-despliegue/plan.md).
+
+### Perfil `prod`
+
+Se activa con `SPRING_PROFILES_ACTIVE=prod` y solo sobrescribe lo que cambia respecto del desarrollo ([`application-prod.properties`](src/main/resources/application-prod.properties)):
+
+| Qué | Desarrollo (sin perfil) | `prod` |
+|---|---|---|
+| Seed (`data.sql`) | se ejecuta (solo inserta en la tabla vacía) | no se ejecuta |
+| Esquema (`ddl-auto`) | `update` | `validate`: comprueba, nunca modifica |
+| SQL en el log | sí | no |
+| Swagger UI y `/v3/api-docs` | activos | 404 |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | con valores por defecto de desarrollo | obligatorias: sin ellas la app no arranca (el error dice `'url' must start with "jdbc"`) |
+| Pool de conexiones | 10 (por defecto) | `DB_POOL_SIZE`, 5 por defecto |
+| Cabeceras `X-Forwarded-*` | se ignoran | se respetan (HTTPS terminado en el proxy) |
+
+El puerto sale de `PORT` en cualquier perfil (`server.port=${PORT:8080}`): Render asigna el suyo y en local queda el 8080.
+
+### Variables por entorno
+
+| Variable | Desarrollo (`.env`) | Docker local (`compose.yaml`) | Render |
+|---|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | — | — | `prod` |
+| `PORT` | — (8080) | — (8080) | la asigna Render |
+| `DB_URL` | PostgreSQL local o Supabase | `jdbc:postgresql://db:5432/spring_api` | Supabase (Session pooler) |
+| `DB_USERNAME` / `DB_PASSWORD` | `.env` | `postgres` / `POSTGRES_PASSWORD` del `.env` (por defecto `postgres`) | panel de Render |
+| `JWT_SECRET` | `.env` | del `.env` | la genera Render (distinta a la de desarrollo) |
+| `JWT_COOKIE_SECURE` | `false` | `false` | `true` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `.env` | del `.env` | panel de Render (solo si el admin aún no existe) |
+| `TZ` | la del sistema | `America/Santiago` (imagen) | `America/Santiago` (imagen) |
+
+### Imagen Docker
+
+El [`Dockerfile`](Dockerfile) compila con el JDK y ejecuta con el JRE (Java 25), con un usuario sin privilegios, la zona horaria de Chile y la memoria de la JVM al 75 % de la del contenedor. Los tests no corren dentro de la imagen (necesitan la base del `.env`): ejecuta `./mvnw test` antes. El [`.dockerignore`](.dockerignore) deja fuera `.env` y `target/`: ningún secreto entra a la imagen.
+
+```bash
+docker build -t cartera-api .
+# Contra Supabase con el perfil prod (las variables salen del .env, no de la imagen):
+docker run --rm --env-file .env -e SPRING_PROFILES_ACTIVE=prod -p 8080:8080 cartera-api
+```
+
+### Docker Compose en local
+
+[`compose.yaml`](compose.yaml) levanta el backend y un PostgreSQL propio (sin publicar el 5432, así no choca con otro PostgreSQL de tu máquina). Usa el perfil de desarrollo, así que carga los 20 clientes y crea el admin; los secretos los toma del `.env` y la base de Supabase no se toca.
+
+```bash
+docker compose up --build        # backend en http://localhost:8080 (API_PORT=8082 para usar otro puerto)
+docker compose down              # detiene y borra los contenedores; los datos quedan en el volumen
+docker compose down -v           # borra también la base
+```
+
+El frontend (`npm run dev`) funciona igual: su proxy reenvía `/api` a `localhost:8080`.
+
+### Render (preparado)
+
+[`render.yaml`](render.yaml) es el blueprint del servicio: Docker, plan gratis, región `oregon` (la misma de AWS que el pooler de Supabase), health check en `/actuator/health` y despliegue con cada push a `main`. La base sigue en **Supabase**. Al crear el blueprint (New → Blueprint), Render pide `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`, y genera `JWT_SECRET`.
+
+- La instancia gratis se duerme tras 15 minutos sin tráfico; la primera petición después tarda mientras arranca.
+- Con `ddl-auto=validate`, un cambio de esquema futuro necesitará migraciones (Flyway) antes de desplegarse.
+- El frontend se publica en Vercel y llega a esta API con un **rewrite** (`/api/*` → Render): para el navegador es el mismo origen, así que no hay CORS y las cookies siguen siendo `SameSite=Strict`.
 
 ## Seguridad
 
@@ -374,14 +437,16 @@ src/main/java/com/andres/course/claude/springboot/springapi/app/
 └── exceptions/    # excepciones de dominio y manejador global
 ```
 
+En la raíz: `Dockerfile` y `.dockerignore` (imagen), `compose.yaml` (Docker en local) y `render.yaml` (blueprint de Render). La configuración está en `src/main/resources/application.properties` (desarrollo) y `application-prod.properties` (perfil `prod`).
+
 ## Tests
 
 ```bash
 ./mvnw test
 ```
 
-El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`: seguridad, paginación y filtros de los controllers con `@WebMvcTest`, reglas de los services con Mockito (paginación de clientes, último administrador), validación del orden (`Pageables`), JWT y refresh tokens.
+El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`: seguridad, paginación y filtros de los controllers con `@WebMvcTest`, reglas de los services con Mockito (paginación de clientes, último administrador), validación del orden (`Pageables`), JWT, refresh tokens y los valores del perfil `prod` (`ProdProfileTest`).
 
 ## Especificaciones (SDD)
 
-Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. Las specs del frontend (fases 02 a 06) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).

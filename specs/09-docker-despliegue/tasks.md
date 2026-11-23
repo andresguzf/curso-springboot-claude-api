@@ -46,7 +46,7 @@ constitución de cada repo: [backend](../constitution.md#5-calidad-definición-d
   - Verificación: `npm run build && npm run lint`; JSON válido y revisado contra la documentación de rewrites de Vercel
   - Commit: "Agrega el rewrite de Vercel hacia la API en Render"
 
-- [ ] **I-06** Documentar la fase I
+- [x] **I-06** Documentar la fase I
   - Depende de: I-03, I-05
   - Cubre: RF-09-07
   - Repos: `3-spring-api` y `4-react`
