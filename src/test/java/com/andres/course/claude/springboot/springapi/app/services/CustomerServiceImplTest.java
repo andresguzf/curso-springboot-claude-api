@@ -2,7 +2,7 @@ package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
-import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
+import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.mappers.CustomerMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
 import com.andres.course.claude.springboot.springapi.app.repositories.CustomerRepository;
@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -141,24 +142,26 @@ class CustomerServiceImplTest {
     }
 
     @Test
-    void deleteDeUnClienteSinFacturasLoBorra() {
+    void deleteEsUnBorradoLogicoDelClienteYDeSusFacturasConLaMismaFecha() {
         Customer customer = customer();
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-        when(invoiceRepository.countByCustomerId(1L)).thenReturn(0L);
+        when(invoiceRepository.softDeleteByCustomerId(eq(1L), any(LocalDateTime.class))).thenReturn(3);
 
         customerService.delete(1L);
 
-        verify(customerRepository).delete(customer);
+        ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(invoiceRepository).softDeleteByCustomerId(eq(1L), captor.capture());
+        assertThat(customer.getDeletedAt()).isNotNull().isEqualTo(captor.getValue());
+        // Nada se borra físicamente.
+        verify(customerRepository, never()).delete(any(Customer.class));
     }
 
     @Test
-    void deleteDeUnClienteConFacturasSeRechaza() {
-        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer()));
-        when(invoiceRepository.countByCustomerId(1L)).thenReturn(2L);
+    void deleteDeUnClienteInexistenteOYaEliminadoResponde404() {
+        when(customerRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> customerService.delete(1L))
-                .isInstanceOf(OperationNotAllowedException.class)
-                .hasMessage("No se puede eliminar el cliente: tiene 2 factura(s)");
-        verify(customerRepository, never()).delete(any(Customer.class));
+        assertThatThrownBy(() -> customerService.delete(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(invoiceRepository);
     }
 }

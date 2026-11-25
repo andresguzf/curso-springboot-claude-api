@@ -147,13 +147,14 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     /**
      * Siguiente número para el año de emisión: FAC-2026-0001, FAC-2026-0002... Se busca el último con
-     * ese prefijo (orden alfabético, válido mientras el correlativo tenga 4 dígitos). Dos altas
-     * simultáneas pueden calcular el mismo número: el UNIQUE de la base rechaza la segunda (409).
+     * ese prefijo, incluidas las facturas eliminadas (orden alfabético, válido mientras el correlativo
+     * tenga 4 dígitos). Dos altas simultáneas pueden calcular el mismo número: el UNIQUE de la base
+     * rechaza la segunda (409).
      */
     private String nextNumber(LocalDate issueDate) {
         String prefix = NUMBER_PREFIX + issueDate.getYear() + "-";
-        int next = invoiceRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(prefix)
-                .map(last -> Integer.parseInt(last.getInvoiceNumber().substring(prefix.length())) + 1)
+        int next = invoiceRepository.findLastNumberWithPrefix(prefix)
+                .map(last -> Integer.parseInt(last.substring(prefix.length())) + 1)
                 .orElse(1);
         return prefix + String.format("%04d", next);
     }

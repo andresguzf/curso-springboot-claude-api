@@ -92,6 +92,9 @@ Dirección visual (K-07): propuesta con `frontend-design` sobre los tokens exist
 
 ## 5. Riesgos
 
+- **Entre K-01 y K-02, no arrancar contra Supabase en desarrollo** (ni `./mvnw test`, cuyo `ApplicationTests` usa la base del `.env`): `update` agregaría las columnas y `data.sql` cambiaría el índice del email en producción sin la migración revisada. En K-01 los tests y las pruebas se corrieron con `DB_URL` de la base local; el `update` en seco contra Supabase mostró solo los dos `add column deleted_at` (el índice parcial lo hacen `data.sql` y la migración).
+- (K-01) `InvoiceDto.items` pasó de `@Valid List<…>` a `List<@Valid InvoiceItemDto>`: Hibernate Validator 9 avisa (HV000271) que `@Valid` sobre el contenedor está deprecado.
+
 - `data.sql` con DDL: corre también en desarrollo contra Supabase; las sentencias son idempotentes y equivalentes a la migración.
 - `update` en desarrollo contra Supabase antes de K-02 agregaría las columnas por su cuenta; la migración usa `IF NOT EXISTS`. Antes de arrancar contra Supabase, el `update` en seco de la spec 10 (§7 de su plan) muestra el DDL.
 - Recharts y el tema oscuro: los colores van por variables CSS para que cambien con `data-theme`; se revisan ambos temas.

@@ -8,7 +8,7 @@ los dos repos, creada desde `main` al empezar la fase (junto con el commit de es
 Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL local
 (`3-spring-api-db`); contra Supabase solo `prod` (`validate`), lecturas y la migración de K-02.
 
-- [ ] **K-01** Borrado lógico de clientes y facturas
+- [x] **K-01** Borrado lógico de clientes y facturas
   - Depende de: J-09
   - Cubre: RF-11-01, RF-11-02, RF-11-03, RF-11-04, RF-11-11 (constitución), RNF-11-01
   - Archivos: `models/{Customer,Invoice}.java`, `repositories/InvoiceRepository.java`, `services/{CustomerServiceImpl,InvoiceServiceImpl}.java`, `src/main/resources/data.sql`, `specs/constitution.md` (§3 y §6), tests de `CustomerServiceImplTest`, `InvoiceServiceImplTest` y `CustomerControllerSecurityTest`
