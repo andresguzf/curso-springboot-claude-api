@@ -87,7 +87,7 @@ Lista blanca de orden (`InvoiceServiceImpl.SORT_FIELDS`): `id`, `invoiceNumber`,
 |---|---|
 | `models/InvoiceStatus` | Enum `PENDING`, `PAID`, `CANCELLED`. |
 | `models/Invoice` | `@Table(name = "invoices", uniqueConstraints = @UniqueConstraint(name = "invoices_invoice_number_key", …), indexes = @Index(name = "idx_invoices_customer_id", …))`. `@ManyToOne(fetch = LAZY, optional = false) customer` con `@JoinColumn(name = "customer_id")`. Importes `BigDecimal` con `precision = 12, scale = 2`. `@Enumerated(STRING) status` (largo 20, `PENDING` por defecto). `@OneToMany(mappedBy = "invoice", cascade = ALL, orphanRemoval = true) @OrderBy("lineNumber") @BatchSize(size = 50) List<InvoiceItem> items`. Auditoría con `@PrePersist` / `@PreUpdate` (`created_at`, `updated_at`). Métodos `addItem` / `removeItem` que mantienen las dos puntas de la relación. |
-| `models/InvoiceItem` | `@Table(name = "invoice_items", uniqueConstraints = @UniqueConstraint(name = "uq_invoice_items_line", columnNames = {"invoice_id", "line_number"}), indexes = @Index(name = "idx_invoice_items_invoice_id", …))`. `@ManyToOne(LAZY) invoice` con `@OnDelete(CASCADE)`. `quantity` (10,2), `unitPrice` (12,2). `lineTotal` con `@GeneratedColumn("round(quantity * unit_price, 2)")`: la calcula PostgreSQL (Hibernate nunca la escribe y la crea igual en una base local). `calculateLineTotal()` hace el mismo cálculo en Java para los importes de la factura y la respuesta. `@PrePersist` para `created_at`. |
+| `models/InvoiceItem` | `@Table(name = "invoice_items", uniqueConstraints = @UniqueConstraint(name = "uq_invoice_items_line", columnNames = {"invoice_id", "line_number"}), indexes = @Index(name = "idx_invoice_items_invoice_id", …))`. `@ManyToOne(LAZY) invoice` con `@OnDelete(CASCADE)`. `quantity` (10,2), `unitPrice` (12,2). `lineTotal` con `@Generated(event = {INSERT, UPDATE})` y `@Column(insertable = false, updatable = false, precision = 12, scale = 2, columnDefinition = "numeric(12,2) generated always as (round(quantity * unit_price, 2)) stored")`: la calcula PostgreSQL, Hibernate nunca la escribe y en una base local la crea `STORED` como en Supabase (J-01: `@GeneratedColumn` no agrega `STORED`, así PostgreSQL 18 la crea virtual y PostgreSQL 17 rechaza la sintaxis; `precision`/`scale` se repiten porque `update` las compara y, si faltan, intenta un `ALTER COLUMN` en cada arranque). `calculateLineTotal()` hace el mismo cálculo en Java para los importes de la factura y la respuesta. `@PrePersist` para `created_at`. |
 | `repositories/InvoiceRepository` | `JpaRepository<Invoice, Long>` + `JpaSpecificationExecutor<Invoice>`. `findAll(Specification, Pageable)` sobrescrito con `@EntityGraph(attributePaths = "customer")`; `findWithCustomerAndItemsById` (`@EntityGraph` con `customer` e `items`); `countByCustomerId`; `findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(prefix)` para la numeración. |
 | `repositories/InvoiceSpecifications` | `matches(search)` (número o nombre, apellido o email del cliente con `LikePatterns` + `ESCAPE`, con `join` al cliente), `hasCustomer`, `hasStatus`, `issuedBetween`; `of(filter)` con `Specification.allOf`. |
 | `dto/InvoiceDto`, `dto/InvoiceItemDto` | `record` con las validaciones de CA-10-5 (`@NotNull`, `@NotEmpty`, `@Size(max = 100)`, `@Valid` en la lista, `@DecimalMin`, `@Digits`). Campos `RO` con `@JsonProperty(access = READ_ONLY)`. |
@@ -139,8 +139,8 @@ Lista blanca de orden (`InvoiceServiceImpl.SORT_FIELDS`): `id`, `invoiceNumber`,
   índices se copian en las anotaciones para que `ddl-auto=update` (desarrollo contra Supabase) los
   reconozca y no cree duplicados, y una base local nueva quede igual a la de producción. En `prod`,
   `validate` comprueba el mapeo.
-- **`line_total` generada**: se mapea con `@GeneratedColumn` (Hibernate no la inserta ni actualiza y
-  la crea en una base local), pero los importes se calculan en Java con la misma fórmula: así el
+- **`line_total` generada**: se mapea como columna de solo lectura con su definición completa
+  (`… generated always as (…) stored`, ver §3), así Hibernate no la inserta ni actualiza y la crea igual en una base local, pero los importes se calculan en Java con la misma fórmula: así el
   DTO no depende de releer la fila después de cada `flush` y los tests del service no necesitan base.
 - **Importes calculados por el backend**: evita facturas con totales incoherentes; la UI muestra una
   vista previa con la misma fórmula y el backend devuelve los definitivos.
@@ -162,8 +162,12 @@ Lista blanca de orden (`InvoiceServiceImpl.SORT_FIELDS`): `id`, `invoiceNumber`,
 ## 7. Riesgos
 
 - **`ddl-auto=update` contra Supabase**: si un nombre de restricción no coincide, Hibernate podría
-  crear una restricción o un índice duplicado. J-01 lo verifica arrancando dos veces contra la base
-  local y revisando las restricciones (y una vez con `prod` contra Supabase).
+  crear una restricción o un índice duplicado. J-01 lo verificó: tres arranques contra la base local
+  (el segundo y el tercero sin DDL y con `pg_constraint` / `pg_indexes` idénticos), `prod` contra
+  Supabase (`validate` OK) y un `update` **en seco** contra Supabase (`ddl-auto=none` +
+  `jakarta.persistence.schema-generation.scripts.action=update` y `…scripts.create-target=<archivo>`):
+  no genera DDL. Ese mismo `update` en seco sirve para revisar cualquier cambio futuro de entities
+  antes de arrancar contra Supabase (también `ApplicationTests`, que usa la base del `.env`).
 - **Numeración con altas simultáneas**: dos altas pueden calcular el mismo número; la segunda recibe
   409 y basta con reintentar. Aceptado (como el email de clientes).
 - **Montos con decimales en CLP**: los pesos no usan decimales, pero las columnas sí (cantidad 1,5

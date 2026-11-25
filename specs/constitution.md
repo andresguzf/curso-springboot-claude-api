@@ -56,6 +56,6 @@ Una tarea solo se marca como hecha cuando:
 
 ## 6. Git
 
-- Rama de trabajo de la spec 01: `feature/paginacion-filtros`; de la spec 09: `feature/docker` (las crea la primera tarea de cada spec).
+- Rama de trabajo de la spec 01: `feature/paginacion-filtros`; de la spec 09: `feature/docker`; de la spec 10: `feature/facturacion`, en los dos repos (las crea la primera tarea de cada spec o el commit que agrega la spec).
 - Un commit por tarea, mensaje en español e imperativo ("Agrega…", "Expone…"), con el trailer `Co-Authored-By` que indique la sesión.
 - Sin push ni merge a `main` sin el OK explícito del usuario al cerrar la fase.

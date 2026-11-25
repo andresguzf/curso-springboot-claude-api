@@ -9,12 +9,12 @@ Las pruebas que escriben datos se hacen contra el PostgreSQL local (`3-spring-ap
 Supabase: el backend se levanta con `DB_URL=jdbc:postgresql://localhost:5432/spring_api` (y usuario
 y contraseña locales) sobrescritos en la línea de comandos.
 
-- [ ] **J-01** Entities de facturas mapeadas al esquema de Supabase y seed local
+- [x] **J-01** Entities de facturas mapeadas al esquema de Supabase y seed local
   - Depende de: A-11, I-06
   - Cubre: RF-10-01, RF-10-06, RNF-10-03
   - Archivos: `models/{Invoice,InvoiceItem,InvoiceStatus}.java`, `repositories/InvoiceRepository.java`, `src/main/resources/data.sql`, `specs/constitution.md` (rama de la spec 10, §6)
   - Hecho cuando: las entities copian tipos, largos, precisión, columna generada, restricciones e índices (con sus nombres) de Supabase; con la base local vacía se crean las tablas y el seed carga facturas y líneas; un segundo arranque no crea restricciones ni índices nuevos; con `prod` contra Supabase la app arranca (`validate`)
-  - Verificación: `./mvnw test`; arrancar dos veces contra la base local y comparar `pg_constraint` / `pg_indexes` de `invoices` e `invoice_items`; `SPRING_PROFILES_ACTIVE=prod` con el `.env` (Supabase): health UP, sin errores de validación del esquema
+  - Verificación: `./mvnw test`; arrancar dos veces contra la base local y comparar `pg_constraint` / `pg_indexes` de `invoices` e `invoice_items`; `SPRING_PROFILES_ACTIVE=prod` con el `.env` (Supabase): arranca sin errores de validación del esquema; `update` en seco contra Supabase sin DDL (ver plan §7)
   - Commit: "Agrega las entities de facturas mapeadas al esquema de Supabase"
 
 - [ ] **J-02** DTOs, mapper, filtros y service de facturas
