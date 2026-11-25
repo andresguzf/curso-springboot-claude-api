@@ -16,7 +16,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `./mvnw test`; contra la base local, dos arranques sin DDL nuevo y curl de: eliminar cliente con facturas, listar, detalle 404, recrear con el mismo email, crear factura tras eliminar; `update` en seco contra Supabase para ver el DDL pendiente (debe coincidir con la migración de K-02)
   - Commit: "Agrega el borrado lógico de clientes y sus facturas"
 
-- [ ] **K-02** Migración del borrado lógico en Supabase
+- [x] **K-02** Migración del borrado lógico en Supabase
   - Depende de: K-01
   - Cubre: RF-11-05, RNF-11-02
   - Archivos: `specs/11-dashboard-borrado-logico/plan.md` (resultado), sin código

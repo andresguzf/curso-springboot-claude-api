@@ -38,6 +38,16 @@ Decisión: `@SQLRestriction` + actualización explícita en vez de `@SoftDelete`
 
 Riesgo: `@SQLRestriction` no se aplica a SQL nativo ni a `data.sql` (por eso el seed sigue usando `WHERE NOT EXISTS (SELECT 1 FROM customers)`, que cuenta también los eliminados: correcto, la base no está vacía).
 
+### Resultado de la migración (K-02, 25-11-2026)
+
+Aplicada con el MCP de Supabase (`apply_migration`, versión `20261125164514`, nombre `soft_delete_customers_invoices`) con el OK explícito del usuario al SQL de arriba. Verificado:
+
+- Antes y después: 23 clientes, 7 facturas, 17 líneas, 3 usuarios; ningún `deleted_at` asignado; sin emails duplicados (condición para el índice único).
+- Esquema: `customers.deleted_at` e `invoices.deleted_at` (`timestamp`); sin `ukrfbvkrffamfql7cjmen8v976v`; `customers_email_active_key` `UNIQUE … (email) WHERE (deleted_at IS NULL)`.
+- `SPRING_PROFILES_ACTIVE=prod` contra Supabase arranca (`validate` OK); `update` en seco sin DDL; `./mvnw test` con el `.env` (Supabase) pasa y no cambia el esquema ni los datos.
+
+Desde aquí vuelve a ser seguro arrancar en desarrollo y correr los tests contra Supabase.
+
 ## 2. Estadísticas (backend)
 
 `GET /api/invoices/stats` (ya cubierto por `GET /api/invoices/**` → USER/ADMIN; la ruta literal gana a `/{id}`).
@@ -92,7 +102,7 @@ Dirección visual (K-07): propuesta con `frontend-design` sobre los tokens exist
 
 ## 5. Riesgos
 
-- **Entre K-01 y K-02, no arrancar contra Supabase en desarrollo** (ni `./mvnw test`, cuyo `ApplicationTests` usa la base del `.env`): `update` agregaría las columnas y `data.sql` cambiaría el índice del email en producción sin la migración revisada. En K-01 los tests y las pruebas se corrieron con `DB_URL` de la base local; el `update` en seco contra Supabase mostró solo los dos `add column deleted_at` (el índice parcial lo hacen `data.sql` y la migración).
+- **(Resuelto en K-02) Entre K-01 y K-02, no arrancar contra Supabase en desarrollo** (ni `./mvnw test`, cuyo `ApplicationTests` usa la base del `.env`): `update` agregaría las columnas y `data.sql` cambiaría el índice del email en producción sin la migración revisada. En K-01 los tests y las pruebas se corrieron con `DB_URL` de la base local; el `update` en seco contra Supabase mostró solo los dos `add column deleted_at` (el índice parcial lo hacen `data.sql` y la migración).
 - (K-01) `InvoiceDto.items` pasó de `@Valid List<…>` a `List<@Valid InvoiceItemDto>`: Hibernate Validator 9 avisa (HV000271) que `@Valid` sobre el contenedor está deprecado.
 
 - `data.sql` con DDL: corre también en desarrollo contra Supabase; las sentencias son idempotentes y equivalentes a la migración.
