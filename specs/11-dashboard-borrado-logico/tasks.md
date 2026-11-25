@@ -51,7 +51,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `npm run build && npm run lint`; navegador contra la base local: cliente con y sin facturas
   - Commit: "Avisa las facturas que se eliminan con un cliente"
 
-- [ ] **K-06** Nueva factura desde el listado con autocompletado de clientes
+- [x] **K-06** Nueva factura desde el listado con autocompletado de clientes
   - Depende de: J-09
   - Cubre: RF-11-09, RNF-11-04
   - Repo: `4-react`
