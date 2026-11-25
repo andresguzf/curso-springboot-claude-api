@@ -60,7 +60,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `npm run build && npm run lint`; en el navegador como admin y como user
   - Commit: "Agrega el detalle de factura y las facturas en la ficha del cliente"
 
-- [ ] **J-07** Alta y edición de facturas con líneas dinámicas
+- [x] **J-07** Alta y edición de facturas con líneas dinámicas
   - Depende de: J-06
   - Cubre: RF-10-10, RNF-10-01, RNF-10-05
   - Repo: `4-react`
