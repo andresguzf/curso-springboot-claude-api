@@ -89,7 +89,72 @@ Desde aquí vuelve a ser seguro arrancar en desarrollo y correr los tests contra
 | `pages/DashboardPage.tsx` | Cifras de clientes (compactadas en tarjetas) + `BillingSection`. |
 | `vite.config.ts` | `recharts` (y sus dependencias) en un grupo de `codeSplitting` propio. |
 
-Dirección visual (K-07): propuesta con `frontend-design` sobre los tokens existentes (`specs/02-base-frontend/design.md`), aprobada por el usuario antes de K-08. Colores nuevos para series de gráficos solo si hace falta, definidos en los dos temas con contraste medido.
+### Dirección visual del resumen (K-07) — **aprobada por el usuario (25-11-2026)**
+
+Hecha con la skill `frontend-design` sobre la dirección ya aprobada (`4-react/specs/02-base-frontend/design.md`: «el fichero», banda grafito, un solo acento, Atkinson Hyperlegible, radios por jerarquía). No se agregan fuentes ni colores de marca: el resumen tiene que verse de la misma familia que las tablas.
+
+**Idea**: el resumen deja de ser una lista de cifras y abre con un **balance**: una sola barra horizontal, ancha como la página, que reparte lo facturado entre pagado y pendiente, con lo vencido marcado dentro de lo pendiente. Es lo que un administrativo mira primero («¿cuánto me deben?») y reemplaza la fila de cuatro tarjetas iguales con número grande, que es el recurso por defecto de cualquier dashboard. Esa barra es el único elemento llamativo; lo demás queda sobrio.
+
+**Composición** (escritorio, contenido alineado a la izquierda, `max-w-screen-2xl`):
+
+```
+Resumen                                              (h1, como hoy)
+La facturación y la cartera al día de hoy.
+
+┌ Facturación ─────────────────────────────────────────────────────────────┐  panel (radio 10)
+│ Facturado  $690.200           6 facturas emitidas, 1 anulada no suma        │
+│ ████████████████████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░                 │  barra de balance (24 px)
+│ Pagado $464.100   67 %  │  Pendiente $226.100   33 %  │  Vencido $0       │  tres leyendas-enlace
+├──────────────────────────────────────────────┬──────────────────────────┤
+│ Por mes · últimos 12 meses                   │ Facturas por estado       │
+│  ▁ ▁ ▁ ▁ ▁ ▁ ▁ ▁ ▁ █ ▆                      │      ◯  6 facturas         │
+│  dic ene … sep oct nov▲ (mes actual: marca)  │  3 Pendientes  2 Pagadas  │
+│  barras apiladas: pagado abajo, pendiente    │  1 Anulada                │
+├──────────────────────────────────────────────┴──────────────────────────┤
+│ Clientes con más facturado                                                │
+│ 1  Bruno González   ████████████████████  $285.600   1 factura            │
+│ 2  Ana Pérez        ███████████████████   $279.650   2 facturas           │
+│ …                                                                          │
+└───────────────────────────────────────────────────────────────────────────┘
+┌ Cartera ──────────────────────────────────────────────────────────────────┐
+│ Clientes 22  │  Activos 20  │  Nuevos en noviembre 3  │  Usuarios 3 (ADMIN) │  las 4 cifras de hoy, en una fila
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+Móvil (375 px): todo en una columna; la barra de balance sigue a todo el ancho con las leyendas apiladas; el gráfico mensual muestra 6 meses (los más recientes) para que las barras no queden de 4 px; la dona queda al lado de su leyenda; la cartera en 2 × 2.
+
+**Color** (solo tokens existentes; cada uno en los dos temas, con contraste ≥ 3:1 de objeto gráfico contra `surface`):
+
+| Uso | Claro | Oscuro | Por qué |
+|---|---|---|---|
+| Pagado | `success` #2D6A4F (alerce) | #6FD6A0 (menta) | ya significa «bien / activo» en los badges |
+| Pendiente | `warning` #8A4B12 (cobre) | #EFBE6A (miel) | ya es el badge «Pendiente» |
+| Vencido | rayado diagonal de `danger` #A3262D sobre el tramo pendiente | #FF8F87 (coral) | rojo solo comunica estado (principio 1); el rayado no depende solo del color |
+| Anulada (dona) | `line-strong` #7D8692 | #788296 | queda fuera de los importes: neutro |
+| Mes actual | marca `accent` (ámbar / lavanda) bajo la etiqueta del eje | | el acento marca «dónde estás», como la pestaña activa |
+| Ejes, rejilla | `ink-muted` para etiquetas, `line` para la base | | sin rejilla vertical; 3 líneas horizontales suaves |
+
+Los colores se pasan a Recharts como `var(--color-…)`, así cambian solos con `data-theme`.
+
+**Tipografía**: misma escala. «Facturado» y su monto son la única cifra grande de la sección (1.75 rem, 600, `tabular-nums`, al tamaño del h1 pero sin competir: va dentro del panel). Montos de leyendas a 1 rem / 600; etiquetas de ejes a 13 px; montos abreviados en el eje («$464 mil»), completos en el tooltip y en la leyenda (`formatMoney`).
+
+**Interacción y enlaces**: cada tramo y leyenda del balance lleva a su listado filtrado (Pagado → `/invoices?status=PAID`, Pendiente → `?status=PENDING`); cada barra mensual a `/invoices?issuedFrom=…&issuedTo=…`; cada estado de la dona a su filtro; cada cliente del ranking a `/invoices?customerId=`. Tooltip de Recharts con `surface`, borde `line` y `shadow-popover`. Sin animación de entrada de los gráficos (`isAnimationActive={false}`), coherente con «movimiento mínimo y con causa».
+
+**Accesibilidad**: cada gráfico es un `<figure>` con `<figcaption>` y una tabla `sr-only` con los mismos números; la barra de balance es una lista de enlaces con su texto completo («Pagado: $464.100, 67 % de lo facturado»); foco visible en tramos y barras.
+
+**Estados**: carga con esqueletos de la forma de cada pieza (barra, columnas, círculo, filas); error con «Reintentar»; sin facturas, la sección muestra «Todavía no hay facturas» con «Nueva factura» (ADMIN) en vez de gráficos vacíos.
+
+**Revisión contra los defaults** (paso de autocrítica de la skill):
+
+| Default | Decisión |
+|---|---|
+| Fila de 4 tarjetas iguales «número grande + etiqueta chica» | Reemplazada por la barra de balance: un solo número grande (Facturado) y el reparto proporcional |
+| Gradientes y sombras en tarjetas | Sin gradientes; un solo panel con borde, sombra solo en el tooltip |
+| Paleta arcoíris en los gráficos | Solo los colores de estado que la app ya usa; anuladas en neutro |
+| Numeración decorativa (01 / 02) | Solo en el ranking de clientes, que sí es un orden |
+| Metadatos con «·» | Separadores de leyenda como celdas, no puntos medios |
+
+Primera versión revisada: las 4 tarjetas de KPI que había pensado primero (facturado, pagado, pendiente, vencido) eran exactamente el default de la tabla de arriba; se cambiaron por la barra de balance, que además muestra la proporción, que es la información útil.
 
 ## 4. Decisiones
 

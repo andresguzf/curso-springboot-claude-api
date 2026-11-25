@@ -60,7 +60,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `npm run build && npm run lint`; navegador: buscar por apellido y por email, ↑ ↓ Enter Esc, sin resultados, enviar sin cliente, crear
   - Commit: "Agrega la nueva factura con autocompletado de clientes"
 
-- [ ] **K-07** Propuesta visual del dashboard de facturación
+- [x] **K-07** Propuesta visual del dashboard de facturación
   - Depende de: K-03
   - Cubre: RF-11-10, RNF-11-05
   - Repo: `4-react`
