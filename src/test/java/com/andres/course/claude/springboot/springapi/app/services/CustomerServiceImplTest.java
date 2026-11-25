@@ -2,9 +2,11 @@ package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
+import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
 import com.andres.course.claude.springboot.springapi.app.mappers.CustomerMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
 import com.andres.course.claude.springboot.springapi.app.repositories.CustomerRepository;
+import com.andres.course.claude.springboot.springapi.app.repositories.InvoiceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,10 +23,12 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -35,11 +39,14 @@ class CustomerServiceImplTest {
     @Mock
     private CustomerRepository customerRepository;
 
+    @Mock
+    private InvoiceRepository invoiceRepository;
+
     private CustomerServiceImpl customerService;
 
     @BeforeEach
     void setUp() {
-        customerService = new CustomerServiceImpl(customerRepository, new CustomerMapper());
+        customerService = new CustomerServiceImpl(customerRepository, invoiceRepository, new CustomerMapper());
     }
 
     private static Customer customer() {
@@ -131,5 +138,27 @@ class CustomerServiceImplTest {
         Page<CustomerDto> page = customerService.findPage(filter(null, null, dia, dia), PageRequest.of(0, 10));
 
         assertThat(page.getTotalElements()).isZero();
+    }
+
+    @Test
+    void deleteDeUnClienteSinFacturasLoBorra() {
+        Customer customer = customer();
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(invoiceRepository.countByCustomerId(1L)).thenReturn(0L);
+
+        customerService.delete(1L);
+
+        verify(customerRepository).delete(customer);
+    }
+
+    @Test
+    void deleteDeUnClienteConFacturasSeRechaza() {
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer()));
+        when(invoiceRepository.countByCustomerId(1L)).thenReturn(2L);
+
+        assertThatThrownBy(() -> customerService.delete(1L))
+                .isInstanceOf(OperationNotAllowedException.class)
+                .hasMessage("No se puede eliminar el cliente: tiene 2 factura(s)");
+        verify(customerRepository, never()).delete(any(Customer.class));
     }
 }

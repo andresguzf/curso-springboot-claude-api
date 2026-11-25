@@ -32,3 +32,42 @@ FROM (VALUES
     ('Tomás',     'Valenzuela','tomas.valenzuela@ejemplo.com', '+56 9 1000 0020', 'Calle Esperanza 220',    'Quilpué',      '1989-06-06', true,   0)
 ) AS seed (name, last_name, email, phone, address, city, birth_date, active, days_ago)
 WHERE NOT EXISTS (SELECT 1 FROM customers);
+
+-- Facturas de ejemplo (datos ficticios), solo si la tabla invoices está VACÍA: en Supabase,
+-- que ya tiene facturas, no inserta nada. El cliente se busca por email (los ids dependen de la
+-- base) y los importes son coherentes con las líneas (IVA del 19 %). created_at a mano porque
+-- @PrePersist no corre en SQL directo.
+INSERT INTO invoices (invoice_number, customer_id, issue_date, due_date, subtotal, tax, total, status, notes, created_at)
+SELECT s.invoice_number, c.id, s.issue_date::date, s.due_date::date, s.subtotal, s.tax, s.total, s.status, s.notes,
+       s.issue_date::timestamp
+FROM (VALUES
+    ('FAC-2026-0001', 'ana.perez@ejemplo.com',       '2026-10-05', '2026-11-04', 150000.00, 28500.00, 178500.00, 'PAID',      'Desarrollo de API REST'),
+    ('FAC-2026-0002', 'ana.perez@ejemplo.com',       '2026-11-10', '2026-12-10',  85000.00, 16150.00, 101150.00, 'PENDING',   'Soporte mensual noviembre'),
+    ('FAC-2026-0003', 'bruno.gonzalez@ejemplo.com',  '2026-10-20', '2026-11-19', 240000.00, 45600.00, 285600.00, 'PAID',      'Integración con Supabase'),
+    ('FAC-2026-0004', 'diego.munoz@ejemplo.com',     '2026-11-15', '2026-12-15',  60000.00, 11400.00,  71400.00, 'PENDING',   'Consultoría Spring Boot'),
+    ('FAC-2026-0005', 'isabel.martinez@ejemplo.com', '2026-11-01', '2026-12-01', 120000.00, 22800.00, 142800.00, 'CANCELLED', 'Licencia anual (anulada)'),
+    ('FAC-2026-0006', 'camila.rojas@ejemplo.com',    '2026-11-20', NULL,          45000.00,  8550.00,  53550.00, 'PENDING',   'Capacitación en React')
+) AS s (invoice_number, email, issue_date, due_date, subtotal, tax, total, status, notes)
+JOIN customers c ON c.email = s.email
+WHERE NOT EXISTS (SELECT 1 FROM invoices);
+
+-- Líneas de esas facturas (la factura se busca por número). line_total no se inserta: es una
+-- columna generada por PostgreSQL (round(quantity * unit_price, 2)).
+INSERT INTO invoice_items (invoice_id, line_number, description, quantity, unit_price, created_at)
+SELECT i.id, s.line_number, s.description, s.quantity, s.unit_price, i.created_at
+FROM (VALUES
+    ('FAC-2026-0001', 1, 'Diseño de endpoints REST',                      1.00,  50000.00),
+    ('FAC-2026-0001', 2, 'Implementación de endpoints (horas)',          20.00,   4000.00),
+    ('FAC-2026-0001', 3, 'Documentación OpenAPI',                         1.00,  20000.00),
+    ('FAC-2026-0002', 1, 'Soporte técnico mensual',                       1.00,  60000.00),
+    ('FAC-2026-0002', 2, 'Horas adicionales de soporte',                  5.00,   5000.00),
+    ('FAC-2026-0003', 1, 'Configuración de proyecto Supabase',            1.00,  40000.00),
+    ('FAC-2026-0003', 2, 'Migración de base de datos',                    1.00, 120000.00),
+    ('FAC-2026-0003', 3, 'Integración Spring Boot con Supabase (horas)', 16.00,   5000.00),
+    ('FAC-2026-0004', 1, 'Consultoría Spring Boot (horas)',              12.00,   5000.00),
+    ('FAC-2026-0005', 1, 'Licencia anual de software',                    1.00, 100000.00),
+    ('FAC-2026-0005', 2, 'Configuración inicial',                         1.00,  20000.00),
+    ('FAC-2026-0006', 1, 'Taller de React (horas)',                       1.50,  30000.00)
+) AS s (invoice_number, line_number, description, quantity, unit_price)
+JOIN invoices i ON i.invoice_number = s.invoice_number
+WHERE NOT EXISTS (SELECT 1 FROM invoice_items);

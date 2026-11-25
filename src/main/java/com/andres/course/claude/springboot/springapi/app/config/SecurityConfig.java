@@ -31,7 +31,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
  * - CSRF activo: como el navegador envía las cookies solo, las peticiones que modifican datos deben
  *   traer la cabecera X-XSRF-TOKEN con el valor de la cookie XSRF-TOKEN (legible por JavaScript).
  *   Un sitio malicioso no puede leer esa cookie, así que no puede armar la cabecera.
- * - Roles: USER solo lee clientes; ADMIN administra clientes y usuarios.
+ * - Roles: USER solo lee clientes y facturas; ADMIN administra clientes, facturas y usuarios.
  */
 @Configuration
 @EnableWebSecurity
@@ -76,6 +76,9 @@ public class SecurityConfig {
                         // Clientes: USER y ADMIN leen; solo ADMIN crea, edita y borra
                         .requestMatchers(HttpMethod.GET, "/api/customers/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/customers/**").hasRole("ADMIN")
+                        // Facturas: USER y ADMIN leen; solo ADMIN crea, edita y borra
+                        .requestMatchers(HttpMethod.GET, "/api/invoices/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/invoices/**").hasRole("ADMIN")
                         // Usuarios: solo ADMIN
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         // Todo lo demás (p. ej. /api/auth/me) requiere sesión
