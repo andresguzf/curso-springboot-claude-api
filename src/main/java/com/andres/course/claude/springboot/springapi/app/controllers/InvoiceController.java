@@ -2,6 +2,7 @@ package com.andres.course.claude.springboot.springapi.app.controllers;
 
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
 import com.andres.course.claude.springboot.springapi.app.services.InvoiceService;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -42,6 +43,13 @@ public class InvoiceController {
                                            @ParameterObject @PageableDefault(sort = "issueDate", direction = Sort.Direction.DESC)
                                            Pageable pageable) {
         return new PagedModel<>(invoiceService.findPage(filter, pageable));
+    }
+
+    // GET /api/invoices/stats -> 200 con las estadísticas del resumen (USER y ADMIN, como toda lectura).
+    // La ruta literal gana a /{id}.
+    @GetMapping("/stats")
+    public InvoiceStatsDto stats() {
+        return invoiceService.stats();
     }
 
     // GET /api/invoices/{id} -> 200, o 404 si no existe.

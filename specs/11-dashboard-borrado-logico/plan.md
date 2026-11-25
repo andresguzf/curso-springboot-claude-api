@@ -69,8 +69,8 @@ Desde aquí vuelve a ser seguro arrancar en desarrollo y correr los tests contra
 | Pieza | Cómo |
 |---|---|
 | `dto/InvoiceStatsDto` | `record` con records anidados `StatusTotal`, `MonthTotal`, `CustomerTotal` (solo respuesta, no lleva validación). |
-| `repositories/InvoiceRepository` | Consultas de agregación JPQL con proyecciones a records (`select new …(i.status, count(i), coalesce(sum(i.total), 0)) … group by i.status`; mensual con `year(i.issueDate)`, `month(i.issueDate)` desde una fecha; top 5 con `group by i.customer.id, i.customer.name, i.customer.lastName order by sum(i.total) desc` + `Limit`/`Pageable`). Respetan el `@SQLRestriction`. |
-| `services/InvoiceService.stats()` | `@Transactional(readOnly = true)`; arma el DTO, completa los meses sin facturas con 0 y calcula `billed` y `overdue` (hoy = `LocalDate.now()`, zona del servidor `America/Santiago`). Anuladas fuera de los importes. |
+| `repositories/InvoiceRepository` | (K-03: proyecciones por **interfaz** en `repositories/InvoiceStatsViews`, no `select new` de records anidados; top 5 con `Limit.of(5)`; año y mes con `extract(year/month from …)`). Consultas de agregación JPQL con proyecciones a records (`select new …(i.status, count(i), coalesce(sum(i.total), 0)) … group by i.status`; mensual con `year(i.issueDate)`, `month(i.issueDate)` desde una fecha; top 5 con `group by i.customer.id, i.customer.name, i.customer.lastName order by sum(i.total) desc` + `Limit`/`Pageable`). Respetan el `@SQLRestriction`. |
+| `services/InvoiceService.stats()` | (K-03: `InvoiceServiceImpl` recibe un `Clock` en un segundo constructor para fijar "hoy" en los tests; Spring usa el que lleva `@Autowired`.) `@Transactional(readOnly = true)`; arma el DTO, completa los meses sin facturas con 0 y calcula `billed` y `overdue` (hoy = `LocalDate.now()`, zona del servidor `America/Santiago`). Anuladas fuera de los importes. |
 | `controllers/InvoiceController` | `@GetMapping("/stats")`. |
 | Tests | Service con Mockito (meses completos, anuladas excluidas, vencidas) y controller (`@WebMvcTest`: USER 200, sin sesión 401). |
 

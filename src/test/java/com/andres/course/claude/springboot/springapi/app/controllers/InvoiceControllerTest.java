@@ -3,6 +3,7 @@ package com.andres.course.claude.springboot.springapi.app.controllers;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceItemDto;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.models.InvoiceStatus;
 import com.andres.course.claude.springboot.springapi.app.models.Role;
@@ -236,5 +237,24 @@ class InvoiceControllerTest {
         mockMvc.perform(get("/api/invoices").param("sort", "notes").cookie(admin()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("No se puede ordenar por 'notes'. Campos permitidos: id"));
+    }
+
+    @Test
+    void userPuedeVerLasEstadisticasYSinSesion401() throws Exception {
+        when(invoiceService.stats()).thenReturn(new InvoiceStatsDto(7, new BigDecimal("1000.00"), new BigDecimal("600.00"),
+                new BigDecimal("400.00"), new BigDecimal("0.00"), 0,
+                List.of(new InvoiceStatsDto.StatusTotal(InvoiceStatus.PAID, 3, new BigDecimal("600.00"))),
+                List.of(new InvoiceStatsDto.MonthTotal("2026-11", new BigDecimal("600.00"), new BigDecimal("400.00"))),
+                List.of(new InvoiceStatsDto.CustomerTotal(1L, "Ana Pérez", 2, new BigDecimal("1000.00")))));
+
+        // La ruta literal /stats gana a /{id} (no se intenta convertir "stats" a Long).
+        mockMvc.perform(get("/api/invoices/stats").cookie(user()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceCount").value(7))
+                .andExpect(jsonPath("$.billed").value(1000.00))
+                .andExpect(jsonPath("$.byStatus[0].status").value("PAID"))
+                .andExpect(jsonPath("$.monthly[0].month").value("2026-11"))
+                .andExpect(jsonPath("$.topCustomers[0].customerName").value("Ana Pérez"));
+        mockMvc.perform(get("/api/invoices/stats")).andExpect(status().isUnauthorized());
     }
 }

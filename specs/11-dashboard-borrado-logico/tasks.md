@@ -25,7 +25,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `list_migrations` y consultas de esquema con el MCP; arranque `prod`; conteos de filas antes y después
   - Commit: "Documenta la migración del borrado lógico en Supabase"
 
-- [ ] **K-03** Endpoint de estadísticas de facturación
+- [x] **K-03** Endpoint de estadísticas de facturación
   - Depende de: K-01
   - Cubre: RF-11-06, RNF-11-03
   - Archivos: `dto/InvoiceStatsDto.java`, `repositories/InvoiceRepository.java`, `services/{InvoiceService,InvoiceServiceImpl}.java`, `controllers/InvoiceController.java`, tests
