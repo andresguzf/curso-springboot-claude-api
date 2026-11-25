@@ -88,7 +88,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceMapper.updateEntity(dto, invoice);
         syncItems(invoice, dto.items());
         recalculate(invoice);
-        return invoiceMapper.toDto(invoiceRepository.save(invoice));
+        // saveAndFlush: el UPDATE se ejecuta ahora y @PreUpdate asigna updatedAt antes de armar la
+        // respuesta (con save, el flush llegaría al hacer commit y la respuesta saldría sin la fecha).
+        return invoiceMapper.toDto(invoiceRepository.saveAndFlush(invoice));
     }
 
     @Override

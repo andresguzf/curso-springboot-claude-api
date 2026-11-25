@@ -116,6 +116,8 @@ Lista blanca de orden (`InvoiceServiceImpl.SORT_FIELDS`): `id`, `invoiceNumber`,
   también podría chocar con la restricción, según el orden de los `UPDATE`). Así nunca hay dos filas con
   el mismo `(invoice_id, line_number)`: Hibernate ejecuta los `INSERT` antes que los `DELETE` al hacer
   flush, por eso borrar todo y volver a insertar 1…n chocaría con `uq_invoice_items_line`.
+- **Respuesta del `PUT`**: `saveAndFlush`, para que `@PreUpdate` asigne `updatedAt` antes de armar el DTO
+  (con `save` el flush llega al hacer commit y la respuesta saldría sin la fecha; J-03).
 - **Cliente**: `customerRepository.findById(dto.customerId())` o `ResourceNotFoundException("Customer", id)` (404).
 - **Rangos y orden**: `issuedFrom` posterior a `issuedTo` → 400; `Pageables.checked(pageable, SORT_FIELDS)`.
 

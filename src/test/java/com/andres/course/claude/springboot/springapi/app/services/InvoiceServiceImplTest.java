@@ -99,6 +99,10 @@ class InvoiceServiceImplTest {
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    private void saveAndFlushReturnsArgument() {
+        when(invoiceRepository.saveAndFlush(any(Invoice.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
     @Test
     void createNumeraLasLineasCalculaLosImportesYAsignaElSiguienteNumero() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer(1L)));
@@ -187,7 +191,7 @@ class InvoiceServiceImplTest {
         Invoice invoice = stored(5L, 1, 2, 3);
         InvoiceItem first = invoice.getItems().get(0);
         when(invoiceRepository.findWithCustomerAndItemsById(5L)).thenReturn(Optional.of(invoice));
-        saveReturnsArgument();
+        saveAndFlushReturnsArgument();
 
         InvoiceDto updated = invoiceService.update(5L, request(1L, ISSUE, null, null, List.of(
                 item("Nueva 1", "2", "500"),
@@ -207,7 +211,7 @@ class InvoiceServiceImplTest {
     @Test
     void updateDeDosACuatroLineasAgregaConLosNumerosSiguientes() {
         when(invoiceRepository.findWithCustomerAndItemsById(5L)).thenReturn(Optional.of(stored(5L, 1, 2)));
-        saveReturnsArgument();
+        saveAndFlushReturnsArgument();
 
         InvoiceDto updated = invoiceService.update(5L, request(1L, ISSUE, null, InvoiceStatus.CANCELLED, List.of(
                 item("A", "1", "1"), item("B", "1", "1"), item("C", "1", "1"), item("D", "1", "1"))));
@@ -220,7 +224,7 @@ class InvoiceServiceImplTest {
     void updateNoRenumeraLasLineasQueSeConservan() {
         // Una factura con las líneas 1 y 3 (la 2 se borró antes): la línea nueva es la 4, no la 3.
         when(invoiceRepository.findWithCustomerAndItemsById(5L)).thenReturn(Optional.of(stored(5L, 1, 3)));
-        saveReturnsArgument();
+        saveAndFlushReturnsArgument();
 
         InvoiceDto updated = invoiceService.update(5L, request(1L, ISSUE, null, null, List.of(
                 item("A", "1", "1"), item("B", "1", "1"), item("C", "1", "1"))));
@@ -235,7 +239,7 @@ class InvoiceServiceImplTest {
         other.setName("Bruno");
         other.setLastName("González");
         when(customerRepository.findById(2L)).thenReturn(Optional.of(other));
-        saveReturnsArgument();
+        saveAndFlushReturnsArgument();
 
         InvoiceDto updated = invoiceService.update(5L, request(2L, ISSUE, null, null, List.of(item("A", "1", "1"))));
 
@@ -250,7 +254,7 @@ class InvoiceServiceImplTest {
         assertThatThrownBy(() -> invoiceService.update(99L, request(1L, ISSUE, null, null, List.of(item("A", "1", "1")))))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Invoice con id 99 no encontrado");
-        verify(invoiceRepository, never()).save(any());
+        verify(invoiceRepository, never()).saveAndFlush(any());
     }
 
     @Test

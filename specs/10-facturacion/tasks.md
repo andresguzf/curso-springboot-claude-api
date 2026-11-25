@@ -25,7 +25,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `./mvnw test` (tests Mockito del service: importes, numeración, líneas al editar, validaciones)
   - Commit: "Agrega el service de facturas con cálculo de importes y numeración"
 
-- [ ] **J-03** Endpoints de facturas, reglas de acceso y cliente con facturas
+- [x] **J-03** Endpoints de facturas, reglas de acceso y cliente con facturas
   - Depende de: J-02
   - Cubre: RF-10-04, RF-10-05, RF-10-12 (constitución), RNF-10-01, RNF-10-04
   - Archivos: `controllers/InvoiceController.java`, `config/SecurityConfig.java`, `services/CustomerServiceImpl.java`, `specs/constitution.md` (§3 reglas de acceso), `src/test/.../controllers/InvoiceControllerTest.java`, `src/test/.../services/CustomerServiceImplTest.java`
