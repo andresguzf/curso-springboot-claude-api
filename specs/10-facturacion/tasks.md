@@ -69,7 +69,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `npm run build && npm run lint`; en el navegador: crear con 3 líneas, editar dejando 2, vencimiento anterior a la emisión, línea vacía, teclado
   - Commit: "Agrega alta y edición de facturas con líneas y totales en vivo"
 
-- [ ] **J-08** Eliminación de facturas y cliente con facturas
+- [x] **J-08** Eliminación de facturas y cliente con facturas
   - Depende de: J-07
   - Cubre: RF-10-11, RNF-10-05
   - Repo: `4-react`
