@@ -78,7 +78,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `npm run build && npm run lint`; en el navegador: cancelar, confirmar desde las tres pantallas, cliente con facturas
   - Commit: "Agrega la eliminación de facturas con confirmación"
 
-- [ ] **J-09** Documentar la fase J
+- [x] **J-09** Documentar la fase J
   - Depende de: J-08
   - Cubre: RF-10-12
   - Repos: `3-spring-api` y `4-react`

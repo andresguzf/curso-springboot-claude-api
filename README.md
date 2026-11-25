@@ -1,10 +1,10 @@
 # API REST de clientes con Spring Boot
 
-API REST para gestionar clientes (`Customer`) construida con Spring Boot 4, Spring Data JPA y PostgreSQL, con validación de datos, manejo de errores en formato estándar `ProblemDetail` (RFC 9457) y seguridad con **Spring Security + JWT en cookies HttpOnly**, usuarios y roles.
+API REST para gestionar clientes (`Customer`) y sus facturas (`Invoice`) construida con Spring Boot 4, Spring Data JPA y PostgreSQL, con validación de datos, manejo de errores en formato estándar `ProblemDetail` (RFC 9457) y seguridad con **Spring Security + JWT en cookies HttpOnly**, usuarios y roles.
 
 Proyecto del curso de Spring Boot con Claude Code.
 
-**Frontend:** el dashboard que consume esta API es [Cartera](https://github.com/andresguzf/curso-springboot-claude-react), una aplicación React + TypeScript (en local, en la carpeta hermana `../4-react`). Usa el login con cookies, los listados paginados con filtros, la exportación y la administración de usuarios descritos aquí; en desarrollo se conecta por el proxy de Vite (`/api` → `http://localhost:8080`), así que no hace falta CORS.
+**Frontend:** el dashboard que consume esta API es [Cartera](https://github.com/andresguzf/curso-springboot-claude-react), una aplicación React + TypeScript (en local, en la carpeta hermana `../4-react`). Usa el login con cookies, los listados paginados con filtros, la exportación, las facturas y la administración de usuarios descritos aquí; en desarrollo se conecta por el proxy de Vite (`/api` → `http://localhost:8080`), así que no hace falta CORS.
 
 ## Stack
 
@@ -192,10 +192,10 @@ La API usa **JWT en cookies HttpOnly**: el token nunca aparece en el cuerpo de l
 
 ### Roles
 
-| Rol | Clientes | Usuarios |
-|---|---|---|
-| `USER` | Ver, buscar y exportar | — |
-| `ADMIN` | Ver, crear, editar y borrar | Administrar |
+| Rol | Clientes | Facturas | Usuarios |
+|---|---|---|---|
+| `USER` | Ver, buscar y exportar | Ver y buscar | — |
+| `ADMIN` | Ver, crear, editar y borrar | Ver, crear, editar y borrar | Administrar |
 
 Un administrador no puede borrarse, deshabilitarse ni quitarse el rol `ADMIN` a sí mismo (409).
 
@@ -245,7 +245,7 @@ Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
 | `GET` | `/api/customers/{id}` | Obtiene un cliente | 200, 404 |
 | `POST` | `/api/customers` | Crea un cliente | 201 + `Location`, 400, 409 |
 | `PUT` | `/api/customers/{id}` | Actualiza un cliente | 200, 400, 404, 409 |
-| `DELETE` | `/api/customers/{id}` | Elimina un cliente | 204, 404 |
+| `DELETE` | `/api/customers/{id}` | Elimina un cliente (409 si tiene facturas) | 204, 404, 409 |
 
 #### Listado paginado, búsqueda y filtros
 
@@ -324,6 +324,68 @@ curl -b cookies.txt "http://localhost:8080/api/users?role=ADMIN&enabled=true"
 | `createdAt`, `updatedAt` | — | Solo de lectura: salen en las respuestas y se ignoran si se envían |
 
 La contraseña se guarda hasheada con BCrypt. `PUT` y `DELETE` responden 409 si se intenta quitar permisos a uno mismo o dejar el sistema sin administradores habilitados (ver [Roles](#roles)).
+
+### Facturas: `/api/invoices`
+
+Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
+
+| Método | Ruta | Descripción | Respuesta |
+|---|---|---|---|
+| `GET` | `/api/invoices` | Lista paginada de facturas (con cliente y líneas), búsqueda y filtros | 200, 400 |
+| `GET` | `/api/invoices/{id}` | Obtiene una factura con sus líneas | 200, 404 |
+| `POST` | `/api/invoices` | Crea una factura | 201 + `Location`, 400, 404 (cliente), 409 |
+| `PUT` | `/api/invoices/{id}` | Actualiza fechas, estado, notas y líneas | 200, 400, 404 |
+| `DELETE` | `/api/invoices/{id}` | Elimina la factura y sus líneas | 204, 404 |
+
+Las tablas `invoices` e `invoice_items` las creó una migración en Supabase (no Hibernate): las entities copian ese esquema, incluidos los nombres de restricciones e índices, para que el perfil `prod` (`validate`) lo acepte. En una base local nueva las crea Hibernate igual, y `data.sql` carga 6 facturas de ejemplo si la tabla está vacía.
+
+El listado acepta:
+
+| Parámetro | Ejemplo | Descripción |
+|---|---|---|
+| `search` | `fac-2026` | Texto contenido en el número o en el nombre, apellido o email del cliente |
+| `customerId` | `3` | Facturas de un cliente |
+| `status` | `PENDING` | `PENDING`, `PAID` o `CANCELLED` |
+| `issuedFrom`, `issuedTo` | `2026-11-01` | Rango de fecha de emisión (inclusivo) |
+| `page`, `size` | `0`, `10` | Igual que en clientes (10 por defecto, máximo 100) |
+| `sort` | `total,desc` | Campos permitidos: `id`, `invoiceNumber`, `issueDate`, `dueDate`, `status`, `total`, `createdAt`. Por defecto `issueDate,desc` |
+
+Cuerpo del `POST` / `PUT` (los importes y el número **no** se envían: los calcula el backend):
+
+```json
+{
+  "customerId": 3,
+  "issueDate": "2026-11-20",
+  "dueDate": "2026-12-20",
+  "status": "PENDING",
+  "notes": "Soporte mensual",
+  "items": [
+    { "description": "Soporte técnico mensual", "quantity": 1, "unitPrice": 60000 },
+    { "description": "Horas adicionales", "quantity": 1.5, "unitPrice": 5000 }
+  ]
+}
+```
+
+| Campo | Obligatorio | Reglas |
+|---|---|---|
+| `customerId` | Sí | Cliente existente (404 si no existe) |
+| `issueDate` | Sí | `yyyy-MM-dd` |
+| `dueDate` | No | No anterior a `issueDate` (400) |
+| `status` | No | `PENDING` al crear si no se envía; al editar, sin estado se conserva el actual |
+| `notes` | No | Máx. 255 |
+| `items` | Sí | 1 a 100 líneas. Cada una: `description` (obligatoria, máx. 255), `quantity` (> 0, hasta 8 enteros y 2 decimales), `unitPrice` (≥ 0, hasta 10 enteros y 2 decimales). Los errores de una línea llegan como `items[0].quantity` |
+| `id`, `invoiceNumber`, `customerName`, `lineNumber`, `lineTotal`, `subtotal`, `tax`, `total`, `createdAt`, `updatedAt` | — | Solo de lectura: salen en las respuestas y se ignoran si se envían |
+
+Reglas de negocio:
+
+- **Importes**: `lineTotal` = cantidad × precio; `subtotal` = suma de las líneas; `tax` = **IVA del 19 %** del subtotal; `total` = subtotal + IVA. Todo con `BigDecimal` y redondeo a 2 decimales medio hacia arriba (como `round()` de PostgreSQL, que calcula `line_total` como columna generada). Un total mayor que 9.999.999.999,99 responde 400.
+- **Número**: `FAC-<año de emisión>-<NNNN>`, correlativo por año (`FAC-2026-0008`). No cambia al editar. Si dos altas simultáneas calculan el mismo número, la segunda responde 409.
+- **Líneas al editar**: se actualizan en el lugar por posición; las nuevas toman el siguiente número y las que sobran se borran. Así nunca choca la restricción única `(invoice_id, line_number)`.
+- **Cliente con facturas**: no se puede eliminar (`DELETE /api/customers/{id}` → 409 "No se puede eliminar el cliente: tiene N factura(s)").
+
+```bash
+curl -b cookies.txt "http://localhost:8080/api/invoices?customerId=3&status=PENDING"
+```
 
 Documentación interactiva en **Swagger UI**: http://localhost:8080/swagger-ui.html
 
@@ -426,7 +488,7 @@ Ejemplo de error de validación:
 ```
 src/main/java/com/andres/course/claude/springboot/springapi/app/
 ├── config/        # Spring MVC (conversores), Spring Security, admin inicial, scheduling
-├── controllers/   # endpoints REST (clientes, usuarios, auth)
+├── controllers/   # endpoints REST (clientes, facturas, usuarios, auth)
 ├── security/      # JWT, filtro de la cookie, cookies, respuestas 401/403
 ├── converters/    # conversores de exportación: XML, CSV, Excel y PDF
 ├── services/      # lógica de negocio (interfaz + implementación)
@@ -445,8 +507,8 @@ En la raíz: `Dockerfile` y `.dockerignore` (imagen), `compose.yaml` (Docker en 
 ./mvnw test
 ```
 
-El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`: seguridad, paginación y filtros de los controllers con `@WebMvcTest`, reglas de los services con Mockito (paginación de clientes, último administrador), validación del orden (`Pageables`), JWT, refresh tokens y los valores del perfil `prod` (`ProdProfileTest`).
+El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El resto corre sin base de datos, con la clave de prueba de `src/test/resources/application-test.properties`: seguridad, paginación y filtros de los controllers con `@WebMvcTest`, reglas de los services con Mockito (paginación de clientes, cliente con facturas, importes, numeración y líneas de facturas, último administrador), validación del orden (`Pageables`), JWT, refresh tokens y los valores del perfil `prod` (`ProdProfileTest`).
 
 ## Especificaciones (SDD)
 
-Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel, y la [`10-facturacion`](specs/10-facturacion/spec.md) agrega las facturas de cada cliente (backend y frontend) sobre las tablas creadas en Supabase. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
