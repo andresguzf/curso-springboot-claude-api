@@ -33,7 +33,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `./mvnw test`; curl contra la base local comparando con SQL directo
   - Commit: "Agrega el endpoint de estadísticas de facturación"
 
-- [ ] **K-04** Icono de facturas en el listado de clientes
+- [x] **K-04** Icono de facturas en el listado de clientes
   - Depende de: J-09
   - Cubre: RF-11-07, RNF-11-05
   - Repo: `4-react`
