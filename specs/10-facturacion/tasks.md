@@ -51,7 +51,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `npm run build && npm run lint`; en el navegador (backend contra la base local) como admin y como user, a 375 px y en tema oscuro
   - Commit: "Agrega el listado de facturas con búsqueda, filtros y paginación"
 
-- [ ] **J-06** Detalle de factura y facturas en la ficha del cliente
+- [x] **J-06** Detalle de factura y facturas en la ficha del cliente
   - Depende de: J-05
   - Cubre: RF-10-09, RNF-10-05
   - Repo: `4-react`
