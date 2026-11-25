@@ -42,7 +42,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `npm run build && npm run lint`
   - Commit: "Agrega esquemas, servicio y hooks de facturas"
 
-- [ ] **J-05** Listado de facturas con filtros y entrada en el menú
+- [x] **J-05** Listado de facturas con filtros y entrada en el menú
   - Depende de: J-04
   - Cubre: RF-10-08, RNF-10-05
   - Repo: `4-react`
