@@ -33,7 +33,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `./mvnw test`; con la app contra la base local: login como admin y como user, curl de cada endpoint (listado con filtros, detalle, alta, edición 3→2 líneas, eliminación, cliente con facturas)
   - Commit: "Expone los endpoints de facturas con lectura para USER y administración para ADMIN"
 
-- [ ] **J-04** Esquemas, servicio, hooks y formato de montos de facturas
+- [x] **J-04** Esquemas, servicio, hooks y formato de montos de facturas
   - Depende de: J-03
   - Cubre: RF-10-07, RNF-10-02
   - Repo: `4-react`
