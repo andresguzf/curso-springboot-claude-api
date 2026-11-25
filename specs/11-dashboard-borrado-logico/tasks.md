@@ -42,7 +42,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `npm run build && npm run lint`; navegador como admin y como user, 1280 px y 375 px
   - Commit: "Agrega el acceso a las facturas desde el listado de clientes"
 
-- [ ] **K-05** Aviso de borrado lógico al eliminar un cliente
+- [x] **K-05** Aviso de borrado lógico al eliminar un cliente
   - Depende de: K-01, K-04
   - Cubre: RF-11-08
   - Repo: `4-react`
