@@ -17,7 +17,7 @@ y contraseña locales) sobrescritos en la línea de comandos.
   - Verificación: `./mvnw test`; arrancar dos veces contra la base local y comparar `pg_constraint` / `pg_indexes` de `invoices` e `invoice_items`; `SPRING_PROFILES_ACTIVE=prod` con el `.env` (Supabase): arranca sin errores de validación del esquema; `update` en seco contra Supabase sin DDL (ver plan §7)
   - Commit: "Agrega las entities de facturas mapeadas al esquema de Supabase"
 
-- [ ] **J-02** DTOs, mapper, filtros y service de facturas
+- [x] **J-02** DTOs, mapper, filtros y service de facturas
   - Depende de: J-01
   - Cubre: RF-10-02, RF-10-03, RNF-10-02, RNF-10-03
   - Archivos: `dto/{InvoiceDto,InvoiceItemDto,InvoiceFilter}.java`, `mappers/InvoiceMapper.java`, `repositories/InvoiceSpecifications.java`, `services/{InvoiceService,InvoiceServiceImpl}.java`, `src/test/.../services/InvoiceServiceImplTest.java`

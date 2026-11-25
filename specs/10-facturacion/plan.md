@@ -111,7 +111,9 @@ Lista blanca de orden (`InvoiceServiceImpl.SORT_FIELDS`): `id`, `invoiceNumber`,
   no cambia al editar, aunque cambie el año de emisión.
 - **Líneas al editar**: se actualizan **en el lugar** por posición: las primeras `min(n, m)` líneas
   existentes reciben los datos nuevos (mismo `lineNumber`), las sobrantes se quitan de la lista
-  (`orphanRemoval`) y las que faltan se agregan con el siguiente número. Así nunca hay dos filas con
+  (`orphanRemoval`) y las que faltan se agregan con el siguiente número (el mayor + 1). Las que se
+  conservan no se renumeran: si una factura tenía las líneas 1 y 3, la nueva es la 4 (renumerar 3 → 2
+  también podría chocar con la restricción, según el orden de los `UPDATE`). Así nunca hay dos filas con
   el mismo `(invoice_id, line_number)`: Hibernate ejecuta los `INSERT` antes que los `DELETE` al hacer
   flush, por eso borrar todo y volver a insertar 1…n chocaría con `uq_invoice_items_line`.
 - **Cliente**: `customerRepository.findById(dto.customerId())` o `ResourceNotFoundException("Customer", id)` (404).
