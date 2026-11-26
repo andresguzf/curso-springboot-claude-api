@@ -4,7 +4,7 @@
 |---|---|
 | Fase | L |
 | Repo | `3-spring-api` (L-01, L-04) y `4-react` (L-02 … L-04) |
-| Estado | Pendiente |
+| Estado | En curso |
 | Depende de | Spec 11 (dashboard de facturación) |
 | La necesitan | — |
 | Constitución | [backend](../constitution.md) · [frontend](../../../4-react/specs/constitution.md) |

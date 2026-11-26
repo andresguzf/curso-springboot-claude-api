@@ -7,6 +7,7 @@ import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto.CustomerTotal;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto.MonthTotal;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto.StatusTotal;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.mappers.InvoiceMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
@@ -20,9 +21,9 @@ import com.andres.course.claude.springboot.springapi.app.repositories.InvoiceSta
 import com.andres.course.claude.springboot.springapi.app.repositories.InvoiceStatsViews.MonthStatusTotalView;
 import com.andres.course.claude.springboot.springapi.app.repositories.InvoiceStatsViews.StatusTotalView;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -58,6 +60,8 @@ public class InvoiceServiceImpl implements InvoiceService {
     private static final List<InvoiceStatus> BILLED_STATUSES = List.of(InvoiceStatus.PAID, InvoiceStatus.PENDING);
 
     private static final int STATS_MONTHS = 12;
+    /** Máximo de meses en la serie mensual con un rango (más barras no se leen). */
+    static final int MAX_STATS_MONTHS = 24;
     private static final int TOP_CUSTOMERS = 5;
 
     private final InvoiceRepository invoiceRepository;
@@ -137,50 +141,97 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional(readOnly = true)
-    public InvoiceStatsDto stats() {
+    public InvoiceStatsDto stats(InvoiceStatsFilter filter) {
+        InvoiceStatsFilter f = filter == null ? InvoiceStatsFilter.empty() : filter;
         LocalDate today = LocalDate.now(clock);
+        // Primero los meses de la serie: valida el rango (orden y máximo) antes de consultar.
+        List<YearMonth> months = statsMonths(f, today);
+        // El filtro del resumen son las mismas Specifications del listado (cliente y rango de emisión).
+        Specification<Invoice> spec = InvoiceSpecifications.forStats(f);
 
         // Por estado: siempre los 3, aunque alguno no tenga facturas.
         Map<InvoiceStatus, StatusTotalView> found = new EnumMap<>(InvoiceStatus.class);
-        invoiceRepository.totalsByStatus().forEach(view -> found.put(view.getStatus(), view));
+        invoiceRepository.totalsByStatus(spec).forEach(view -> found.put(view.status(), view));
         List<StatusTotal> byStatus = Arrays.stream(InvoiceStatus.values())
                 .map(status -> found.containsKey(status)
-                        ? new StatusTotal(status, found.get(status).getCount(), money(found.get(status).getTotal()))
+                        ? new StatusTotal(status, found.get(status).count(), money(found.get(status).total()))
                         : new StatusTotal(status, 0, money(null)))
                 .toList();
         long invoiceCount = byStatus.stream().mapToLong(StatusTotal::count).sum();
         BigDecimal paid = totalOf(byStatus, InvoiceStatus.PAID);
         BigDecimal pending = totalOf(byStatus, InvoiceStatus.PENDING);
 
-        CountTotalView overdue = invoiceRepository.dueBefore(InvoiceStatus.PENDING, today);
+        CountTotalView overdue = invoiceRepository.dueBefore(spec, InvoiceStatus.PENDING, today);
 
         return new InvoiceStatsDto(invoiceCount, paid.add(pending), paid, pending,
-                money(overdue.getTotal()), overdue.getCount(), byStatus, monthly(today), topCustomers());
+                money(overdue.total()), overdue.count(), byStatus, monthly(spec, months), topCustomers(spec));
     }
 
-    // Últimos 12 meses (el actual incluido), del más antiguo al más nuevo; un mes sin facturas va en 0.
-    private List<MonthTotal> monthly(LocalDate today) {
-        YearMonth current = YearMonth.from(today);
-        YearMonth first = current.minusMonths(STATS_MONTHS - 1L);
-        Map<YearMonth, Map<InvoiceStatus, BigDecimal>> totals = new HashMap<>();
-        for (MonthStatusTotalView view : invoiceRepository.totalsByMonthSince(first.atDay(1), BILLED_STATUSES)) {
-            totals.computeIfAbsent(YearMonth.of(view.getYear(), view.getMonth()), month -> new EnumMap<>(InvoiceStatus.class))
-                    .put(view.getStatus(), money(view.getTotal()));
+    /**
+     * Meses de la serie mensual, del más antiguo al más nuevo (spec 12):
+     * sin rango, los 12 hasta el actual; solo "desde", de ese mes al actual (o a ese mes si es futuro);
+     * solo "hasta", los 12 que terminan en ese mes; con ambos, de un mes al otro.
+     *
+     * @throws IllegalArgumentException si "desde" es posterior a "hasta" o la serie supera 24 meses (400)
+     */
+    static List<YearMonth> statsMonths(InvoiceStatsFilter filter, LocalDate today) {
+        LocalDate from = filter.issuedFrom();
+        LocalDate to = filter.issuedTo();
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException("El rango de fechas no es válido: 'issuedFrom' (" + from
+                    + ") es posterior a 'issuedTo' (" + to + ")");
         }
-        List<MonthTotal> months = new ArrayList<>();
-        for (YearMonth month = first; !month.isAfter(current); month = month.plusMonths(1)) {
-            Map<InvoiceStatus, BigDecimal> ofMonth = totals.getOrDefault(month, Map.of());
-            months.add(new MonthTotal(month.toString(),
-                    ofMonth.getOrDefault(InvoiceStatus.PAID, money(null)),
-                    ofMonth.getOrDefault(InvoiceStatus.PENDING, money(null))));
+        YearMonth current = YearMonth.from(today);
+        YearMonth last;
+        YearMonth first;
+        if (from == null && to == null) {
+            last = current;
+            first = current.minusMonths(STATS_MONTHS - 1L);
+        } else if (to == null) {
+            first = YearMonth.from(from);
+            last = first.isAfter(current) ? first : current;
+        } else if (from == null) {
+            last = YearMonth.from(to);
+            first = last.minusMonths(STATS_MONTHS - 1L);
+        } else {
+            first = YearMonth.from(from);
+            last = YearMonth.from(to);
+        }
+        long count = first.until(last, ChronoUnit.MONTHS) + 1;
+        if (count > MAX_STATS_MONTHS) {
+            throw new IllegalArgumentException("El rango no puede abarcar más de " + MAX_STATS_MONTHS
+                    + " meses (abarca " + count + ")");
+        }
+        List<YearMonth> months = new ArrayList<>();
+        for (YearMonth month = first; !month.isAfter(last); month = month.plusMonths(1)) {
+            months.add(month);
         }
         return months;
     }
 
-    private List<CustomerTotal> topCustomers() {
-        return invoiceRepository.topCustomers(BILLED_STATUSES, Limit.of(TOP_CUSTOMERS)).stream()
-                .map(view -> new CustomerTotal(view.getCustomerId(), view.getName() + " " + view.getLastName(),
-                        view.getInvoiceCount(), money(view.getTotal())))
+    // Importe por mes de la serie (sin anuladas); un mes sin facturas va en 0.
+    private List<MonthTotal> monthly(Specification<Invoice> spec, List<YearMonth> months) {
+        LocalDate from = months.getFirst().atDay(1);
+        LocalDate to = months.getLast().atEndOfMonth();
+        Map<YearMonth, Map<InvoiceStatus, BigDecimal>> totals = new HashMap<>();
+        for (MonthStatusTotalView view : invoiceRepository.totalsByMonth(spec, from, to, BILLED_STATUSES)) {
+            totals.computeIfAbsent(YearMonth.of(view.year(), view.month()), month -> new EnumMap<>(InvoiceStatus.class))
+                    .put(view.status(), money(view.total()));
+        }
+        return months.stream()
+                .map(month -> {
+                    Map<InvoiceStatus, BigDecimal> ofMonth = totals.getOrDefault(month, Map.of());
+                    return new MonthTotal(month.toString(),
+                            ofMonth.getOrDefault(InvoiceStatus.PAID, money(null)),
+                            ofMonth.getOrDefault(InvoiceStatus.PENDING, money(null)));
+                })
+                .toList();
+    }
+
+    private List<CustomerTotal> topCustomers(Specification<Invoice> spec) {
+        return invoiceRepository.topCustomers(spec, BILLED_STATUSES, TOP_CUSTOMERS).stream()
+                .map(view -> new CustomerTotal(view.customerId(), view.name() + " " + view.lastName(),
+                        view.invoiceCount(), money(view.total())))
                 .toList();
     }
 

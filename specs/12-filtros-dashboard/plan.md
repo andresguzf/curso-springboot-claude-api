@@ -33,6 +33,8 @@ Ejemplos: `?customerId=1`, `?issuedFrom=2026-01-01&issuedTo=2026-11-30`, los tre
 | `InvoiceController.stats(@ParameterObject InvoiceStatsFilter filter)` | — |
 | Tests | Service con Mockito (los 4 casos de meses, 24 meses, rango invertido, el filtro llega al repositorio); controller (`?customerId=x` → 400 por campo, params enlazados); y un test de integración de las consultas Criteria con la base local no es necesario: se verifica con curl contra SQL directo, como en K-03. |
 
+Implementado en L-01: las filas pasaron de interfaces de proyección a **records** en `InvoiceStatsViews` (Criteria los arma con `cb.construct`, que necesita constructor: tipos `Long` / `Integer` / `BigDecimal` como los devuelve la base); año y mes con `cb.extract(LocalDateField.YEAR/MONTH, …)` (JPA 3.2); `topCustomers` con `setMaxResults`. `InvoiceServiceImpl.statsMonths(filter, today)` (estática, probada sola) arma la serie y valida. Verificado con curl contra SQL directo en la base local: sin filtro (igual que la spec 11), por cliente, por mes, cliente + desde, cliente inexistente (ceros) y rango invertido (400).
+
 Decisión: **Criteria en un fragmento** y no `@Query` con `(:customerId is null or …)`, que la constitución prohíbe (en PostgreSQL falla con parámetros nulos) y no `JpaSpecificationExecutor`, que no hace `group by`. Reutilizar las Specifications de los listados asegura que «Pendiente en el resumen» y «el listado filtrado por Pendiente» cuenten lo mismo.
 
 ## 3. Frontend

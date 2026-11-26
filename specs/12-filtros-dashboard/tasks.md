@@ -7,7 +7,7 @@ repos, creada desde `main` al empezar la fase (junto con el commit de esta spec)
 
 Como en las specs 10 y 11, las pruebas en el navegador se hacen con el backend contra la base local.
 
-- [ ] **L-01** Filtros en el endpoint de estadísticas
+- [x] **L-01** Filtros en el endpoint de estadísticas
   - Depende de: K-09
   - Cubre: RF-12-01, RF-12-02, RF-12-03, RNF-12-01, RNF-12-02
   - Archivos: `dto/InvoiceStatsFilter.java`, `repositories/{InvoiceStatsRepository,InvoiceStatsRepositoryImpl,InvoiceRepository,InvoiceSpecifications}.java`, `services/{InvoiceService,InvoiceServiceImpl}.java`, `controllers/InvoiceController.java`, tests (`InvoiceStatsTest`, `InvoiceControllerTest`)

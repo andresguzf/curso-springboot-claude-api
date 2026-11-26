@@ -4,6 +4,7 @@ import com.andres.course.claude.springboot.springapi.app.dto.InvoiceDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceItemDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.models.InvoiceStatus;
 import com.andres.course.claude.springboot.springapi.app.models.Role;
@@ -241,7 +242,7 @@ class InvoiceControllerTest {
 
     @Test
     void userPuedeVerLasEstadisticasYSinSesion401() throws Exception {
-        when(invoiceService.stats()).thenReturn(new InvoiceStatsDto(7, new BigDecimal("1000.00"), new BigDecimal("600.00"),
+        when(invoiceService.stats(any())).thenReturn(new InvoiceStatsDto(7, new BigDecimal("1000.00"), new BigDecimal("600.00"),
                 new BigDecimal("400.00"), new BigDecimal("0.00"), 0,
                 List.of(new InvoiceStatsDto.StatusTotal(InvoiceStatus.PAID, 3, new BigDecimal("600.00"))),
                 List.of(new InvoiceStatsDto.MonthTotal("2026-11", new BigDecimal("600.00"), new BigDecimal("400.00"))),
@@ -256,5 +257,30 @@ class InvoiceControllerTest {
                 .andExpect(jsonPath("$.monthly[0].month").value("2026-11"))
                 .andExpect(jsonPath("$.topCustomers[0].customerName").value("Ana Pérez"));
         mockMvc.perform(get("/api/invoices/stats")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void lasEstadisticasEnlazanLosFiltrosYValidanSuFormato() throws Exception {
+        when(invoiceService.stats(any())).thenReturn(new InvoiceStatsDto(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, 0, List.of(), List.of(), List.of()));
+
+        mockMvc.perform(get("/api/invoices/stats").cookie(user())
+                        .param("customerId", "3").param("issuedFrom", "2026-01-01").param("issuedTo", "2026-06-30"))
+                .andExpect(status().isOk());
+        verify(invoiceService).stats(new InvoiceStatsFilter(3L, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30)));
+
+        mockMvc.perform(get("/api/invoices/stats").cookie(user()).param("customerId", "ana").param("issuedTo", "ayer"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.customerId").value("El valor 'ana' no tiene un formato válido"))
+                .andExpect(jsonPath("$.errors.issuedTo").value("El valor 'ayer' no tiene un formato válido"));
+    }
+
+    @Test
+    void unRangoInvalidoEnLasEstadisticasResponde400() throws Exception {
+        when(invoiceService.stats(any())).thenThrow(new IllegalArgumentException("El rango no puede abarcar más de 24 meses (abarca 25)"));
+
+        mockMvc.perform(get("/api/invoices/stats").param("issuedFrom", "2024-11-01").cookie(user()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El rango no puede abarcar más de 24 meses (abarca 25)"));
     }
 }

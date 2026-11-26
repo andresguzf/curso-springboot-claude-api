@@ -3,6 +3,7 @@ package com.andres.course.claude.springboot.springapi.app.controllers;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsFilter;
 import com.andres.course.claude.springboot.springapi.app.services.InvoiceService;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -46,10 +47,11 @@ public class InvoiceController {
     }
 
     // GET /api/invoices/stats -> 200 con las estadísticas del resumen (USER y ADMIN, como toda lectura).
-    // La ruta literal gana a /{id}.
+    // Filtros opcionales (InvoiceStatsFilter): customerId, issuedFrom, issuedTo; 400 si el rango está
+    // invertido o abarca más de 24 meses. La ruta literal gana a /{id}.
     @GetMapping("/stats")
-    public InvoiceStatsDto stats() {
-        return invoiceService.stats();
+    public InvoiceStatsDto stats(@ParameterObject InvoiceStatsFilter filter) {
+        return invoiceService.stats(filter);
     }
 
     // GET /api/invoices/{id} -> 200, o 404 si no existe.
