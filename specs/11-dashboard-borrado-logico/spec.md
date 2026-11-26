@@ -4,7 +4,7 @@
 |---|---|
 | Fase | K |
 | Repo | `3-spring-api` (K-01 … K-03, K-09) y `4-react` (K-04 … K-09) |
-| Estado | En curso |
+| Estado | Hecha |
 | Depende de | Spec 10 (facturación) |
 | La necesitan | — |
 | Constitución | [backend](../constitution.md) · [frontend](../../../4-react/specs/constitution.md) |

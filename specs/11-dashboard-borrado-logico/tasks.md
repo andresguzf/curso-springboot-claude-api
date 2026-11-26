@@ -77,7 +77,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Verificación: `npm run build && npm run lint`; navegador como admin y como user, claro/oscuro, 375 px; Lighthouse de accesibilidad del resumen
   - Commit: "Agrega el dashboard de facturación con gráficos"
 
-- [ ] **K-09** Documentar la fase K
+- [x] **K-09** Documentar la fase K
   - Depende de: K-02, K-05, K-06, K-08
   - Cubre: RF-11-11
   - Repos: `3-spring-api` y `4-react`
