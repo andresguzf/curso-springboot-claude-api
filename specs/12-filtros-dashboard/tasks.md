@@ -33,7 +33,7 @@ Como en las specs 10 y 11, las pruebas en el navegador se hacen con el backend c
   - Verificación: `npm run build && npm run lint`; navegador como admin y como user: filtrar por cliente, por rango y ambos, recargar, atrás, enlaces, 375 px, ambos temas; Lighthouse de accesibilidad del resumen
   - Commit: "Agrega los filtros de cliente y fechas al resumen"
 
-- [ ] **L-04** Documentar la fase L
+- [x] **L-04** Documentar la fase L
   - Depende de: L-03
   - Cubre: RF-12-07
   - Repos: `3-spring-api` y `4-react`
