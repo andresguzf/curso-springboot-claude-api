@@ -91,7 +91,8 @@ public class CustomerController {
         return customerService.update(id, dto);
     }
 
-    // DELETE /api/customers/{id} -> 204 sin cuerpo, o 404 si no existe.
+    // DELETE /api/customers/{id} -> 204 sin cuerpo, o 404 si no existe. Borrado lógico: el cliente y sus
+    // facturas quedan con deleted_at y desaparecen de la API (spec 11).
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         customerService.delete(id);

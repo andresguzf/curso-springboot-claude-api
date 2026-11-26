@@ -45,11 +45,11 @@ public record InvoiceDto(
         @Size(max = 255, message = "Las notas no pueden superar los {max} caracteres")
         String notes,
 
-        // @Valid valida cada línea; sus errores llegan como items[0].description, items[1].quantity...
+        // @Valid en el tipo valida cada línea (sobre la lista está deprecado en Hibernate Validator 9);
+        // sus errores llegan como items[0].description, items[1].quantity...
         @NotEmpty(message = "La factura debe tener al menos una línea")
         @Size(max = 100, message = "La factura no puede tener más de {max} líneas")
-        @Valid
-        List<InvoiceItemDto> items,
+        List<@Valid InvoiceItemDto> items,
 
         // Solo lectura: suma de las líneas.
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)

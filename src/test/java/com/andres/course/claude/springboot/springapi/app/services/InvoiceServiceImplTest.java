@@ -106,10 +106,8 @@ class InvoiceServiceImplTest {
     @Test
     void createNumeraLasLineasCalculaLosImportesYAsignaElSiguienteNumero() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer(1L)));
-        Invoice last = new Invoice();
-        last.setInvoiceNumber("FAC-2026-0007");
-        when(invoiceRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc("FAC-2026-"))
-                .thenReturn(Optional.of(last));
+        // El último número puede ser de una factura eliminada (la consulta nativa las incluye).
+        when(invoiceRepository.findLastNumberWithPrefix("FAC-2026-")).thenReturn(Optional.of("FAC-2026-0007"));
         saveReturnsArgument();
 
         InvoiceDto created = invoiceService.create(request(1L, ISSUE, null, null, List.of(
@@ -145,8 +143,7 @@ class InvoiceServiceImplTest {
     @Test
     void elPrimerNumeroDelAnoEsElCeroCeroCeroUnoYUsaElAnoDeEmision() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer(1L)));
-        when(invoiceRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc("FAC-2027-"))
-                .thenReturn(Optional.empty());
+        when(invoiceRepository.findLastNumberWithPrefix("FAC-2027-")).thenReturn(Optional.empty());
         saveReturnsArgument();
 
         InvoiceDto created = invoiceService.create(request(1L, LocalDate.of(2027, 1, 2), null, null,
@@ -205,7 +202,7 @@ class InvoiceServiceImplTest {
         // Sin estado en el request se conserva el actual; el número no cambia.
         assertThat(updated.status()).isEqualTo(InvoiceStatus.PAID);
         assertThat(updated.invoiceNumber()).isEqualTo("FAC-2026-0007");
-        verify(invoiceRepository, never()).findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(anyString());
+        verify(invoiceRepository, never()).findLastNumberWithPrefix(anyString());
     }
 
     @Test

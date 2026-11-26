@@ -1,3 +1,10 @@
+-- Email único solo entre clientes NO eliminados (borrado lógico, spec 11). JPA no puede declarar un
+-- índice parcial, así que en desarrollo se crea aquí (en Supabase lo crea la migración
+-- soft_delete_customers_invoices). Idempotente: corre en cada arranque. La restricción vieja,
+-- UNIQUE (email) sobre todos los clientes, la había creado Hibernate con este nombre.
+ALTER TABLE customers DROP CONSTRAINT IF EXISTS ukrfbvkrffamfql7cjmen8v976v;
+CREATE UNIQUE INDEX IF NOT EXISTS customers_email_active_key ON customers (email) WHERE deleted_at IS NULL;
+
 -- Seed de 20 clientes de ejemplo (datos ficticios).
 -- Se ejecuta en cada arranque después de que Hibernate crea las tablas
 -- (spring.jpa.defer-datasource-initialization=true), pero solo inserta si la tabla

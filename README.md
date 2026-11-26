@@ -98,7 +98,7 @@ Proyecto del curso de Spring Boot con Claude Code.
 
    En Windows usa `mvnw.cmd spring-boot:run`.
 
-Hibernate crea las tablas `customers`, `users` y `refresh_tokens` automáticamente al arrancar (`ddl-auto=update`). Si no existe un usuario con `ADMIN_EMAIL`, se crea como administrador con `ADMIN_PASSWORD`. Luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
+Hibernate crea las tablas `customers`, `invoices`, `invoice_items`, `users` y `refresh_tokens` automáticamente al arrancar (`ddl-auto=update`). Si no existe un usuario con `ADMIN_EMAIL`, se crea como administrador con `ADMIN_PASSWORD`. Luego se carga un seed de **20 clientes de ejemplo** desde `src/main/resources/data.sql`. El seed solo se inserta cuando la tabla está vacía: en los arranques siguientes no hace nada, así que no duplica clientes ni consume IDs.
 
 Las fechas de alta (`created_at`) del seed se reparten en los últimos 120 días, para que el filtro por fecha de alta (`createdFrom` / `createdTo`) devuelva resultados distintos. Si tu base se creó con una versión anterior del seed (todos los clientes con la misma fecha), puedes repartirlas sin borrar nada; supone que los clientes del seed son los de id 1 a 20:
 
@@ -245,7 +245,7 @@ Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
 | `GET` | `/api/customers/{id}` | Obtiene un cliente | 200, 404 |
 | `POST` | `/api/customers` | Crea un cliente | 201 + `Location`, 400, 409 |
 | `PUT` | `/api/customers/{id}` | Actualiza un cliente | 200, 400, 404, 409 |
-| `DELETE` | `/api/customers/{id}` | Elimina un cliente (409 si tiene facturas) | 204, 404, 409 |
+| `DELETE` | `/api/customers/{id}` | Elimina un cliente y sus facturas (borrado lógico) | 204, 404 |
 
 #### Listado paginado, búsqueda y filtros
 
@@ -332,6 +332,7 @@ Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
 | `GET` | `/api/invoices` | Lista paginada de facturas (con cliente y líneas), búsqueda y filtros | 200, 400 |
+| `GET` | `/api/invoices/stats` | Estadísticas para el resumen (totales, por estado, por mes, top clientes) | 200 |
 | `GET` | `/api/invoices/{id}` | Obtiene una factura con sus líneas | 200, 404 |
 | `POST` | `/api/invoices` | Crea una factura | 201 + `Location`, 400, 404 (cliente), 409 |
 | `PUT` | `/api/invoices/{id}` | Actualiza fechas, estado, notas y líneas | 200, 400, 404 |
@@ -381,11 +382,42 @@ Reglas de negocio:
 - **Importes**: `lineTotal` = cantidad × precio; `subtotal` = suma de las líneas; `tax` = **IVA del 19 %** del subtotal; `total` = subtotal + IVA. Todo con `BigDecimal` y redondeo a 2 decimales medio hacia arriba (como `round()` de PostgreSQL, que calcula `line_total` como columna generada). Un total mayor que 9.999.999.999,99 responde 400.
 - **Número**: `FAC-<año de emisión>-<NNNN>`, correlativo por año (`FAC-2026-0008`). No cambia al editar. Si dos altas simultáneas calculan el mismo número, la segunda responde 409.
 - **Líneas al editar**: se actualizan en el lugar por posición; las nuevas toman el siguiente número y las que sobran se borran. Así nunca choca la restricción única `(invoice_id, line_number)`.
-- **Cliente con facturas**: no se puede eliminar (`DELETE /api/customers/{id}` → 409 "No se puede eliminar el cliente: tiene N factura(s)").
+- **Número sin reutilizar**: el correlativo considera también las facturas de clientes eliminados.
+- **Eliminar una factura** la borra de la base con sus líneas (borrado físico).
 
 ```bash
 curl -b cookies.txt "http://localhost:8080/api/invoices?customerId=3&status=PENDING"
 ```
+
+#### Estadísticas: `GET /api/invoices/stats`
+
+Datos del resumen del dashboard, calculados en la base (USER y ADMIN). Las anuladas cuentan en `invoiceCount` y `byStatus`, pero no en los importes; los clientes y facturas eliminados no cuentan.
+
+```json
+{
+  "invoiceCount": 7,
+  "billed": 719950.00,
+  "paid": 464100.00,
+  "pending": 255850.00,
+  "overdue": 0.00,
+  "overdueCount": 0,
+  "byStatus": [ { "status": "PENDING", "count": 4, "total": 255850.00 }, { "status": "PAID", "count": 2, "total": 464100.00 }, { "status": "CANCELLED", "count": 1, "total": 142800.00 } ],
+  "monthly": [ { "month": "2025-12", "paid": 0.00, "pending": 0.00 }, … 12 meses, hasta el actual ],
+  "topCustomers": [ { "customerId": 2, "customerName": "Bruno González", "invoiceCount": 2, "total": 315350.00 }, … hasta 5 ]
+}
+```
+
+- `billed` = pagadas + pendientes; `overdue` = pendientes con `dueDate` anterior a hoy (zona del servidor).
+- `monthly`: últimos 12 meses por mes de emisión, del más antiguo al actual; un mes sin facturas va en 0.
+
+### Borrado lógico de clientes
+
+`DELETE /api/customers/{id}` no borra nada de la base: el cliente **y todas sus facturas** reciben la misma fecha en `deleted_at` (en una sola transacción) y desde ese momento desaparecen de la API: listados, detalle (404), exportaciones y estadísticas. Las líneas se quedan con su factura. Eliminar un cliente ya eliminado responde 404.
+
+- Las entities `Customer` e `Invoice` llevan `@SQLRestriction("deleted_at IS NULL")`: toda consulta de Hibernate excluye los eliminados.
+- El email es único solo entre clientes **no** eliminados (índice parcial `customers_email_active_key ON customers (email) WHERE deleted_at IS NULL`): se puede volver a registrar el email de un cliente eliminado.
+- Las columnas `deleted_at` y el índice parcial se crearon en Supabase con la migración `soft_delete_customers_invoices`; en desarrollo los crean Hibernate (`update`) y las primeras líneas de `data.sql` (idempotentes).
+- No hay restauración desde la API.
 
 Documentación interactiva en **Swagger UI**: http://localhost:8080/swagger-ui.html
 
@@ -511,4 +543,4 @@ El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El rest
 
 ## Especificaciones (SDD)
 
-Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel, y la [`10-facturacion`](specs/10-facturacion/spec.md) agrega las facturas de cada cliente (backend y frontend) sobre las tablas creadas en Supabase. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel, la [`10-facturacion`](specs/10-facturacion/spec.md) agrega las facturas de cada cliente (backend y frontend) sobre las tablas creadas en Supabase, y la [`11-dashboard-borrado-logico`](specs/11-dashboard-borrado-logico/spec.md) suma las estadísticas para el dashboard y el borrado lógico de clientes. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).

@@ -34,7 +34,7 @@ al proyecto `2-spring-di`: **no se edita desde aquí**).
 - Sesión stateless: `access_token` (15 min) y `refresh_token` (7 días, `Path=/api/auth`) en cookies `HttpOnly`, `SameSite=Strict`. Los tokens nunca van en el cuerpo de una respuesta.
 - CSRF activo con cookie `XSRF-TOKEN` y cabecera `X-XSRF-TOKEN` (solo el login está exento).
 - Reglas de acceso en `SecurityConfig` (no `@PreAuthorize`). `GET /api/customers/**` y (spec 10) `GET /api/invoices/**` → USER/ADMIN; resto de `/api/customers/**`, `/api/invoices/**` y `/api/users/**` → ADMIN.
-- (spec 10) Un cliente con facturas no se elimina (`CustomerServiceImpl.delete` → `OperationNotAllowedException`, 409): la FK de `invoices` no tiene `ON DELETE`.
+- (spec 11) Eliminar un cliente es un **borrado lógico**: el cliente y sus facturas reciben `deleted_at` en la misma transacción y `@SQLRestriction("deleted_at IS NULL")` los excluye de toda consulta; nada se borra de la base. Reemplaza la regla de la spec 10 (409 si tenía facturas). Eliminar una factura sola sigue siendo físico (sus líneas en cascada). El email es único solo entre clientes no eliminados (índice parcial `customers_email_active_key`).
 - Reglas de administradores en `UserServiceImpl`: nadie se borra, se deshabilita ni se quita ADMIN a sí mismo, y (spec 01) siempre queda al menos un ADMIN habilitado.
 - No se agrega CORS: el frontend usa el mismo origen (proxy de Vite en local; rewrite de Vercel hacia Render en la nube, spec 09).
 
@@ -57,6 +57,6 @@ Una tarea solo se marca como hecha cuando:
 
 ## 6. Git
 
-- Rama de trabajo de la spec 01: `feature/paginacion-filtros`; de la spec 09: `feature/docker`; de la spec 10: `feature/facturacion`, en los dos repos (las crea la primera tarea de cada spec o el commit que agrega la spec).
+- Rama de trabajo de la spec 01: `feature/paginacion-filtros`; de la spec 09: `feature/docker`; de la spec 10: `feature/facturacion`, en los dos repos; de la spec 11: `feature/dashboard-borrado-logico`, en los dos repos (las crea la primera tarea de cada spec o el commit que agrega la spec).
 - Un commit por tarea, mensaje en español e imperativo ("Agrega…", "Expone…"), con el trailer `Co-Authored-By` que indique la sesión.
 - Sin push ni merge a `main` sin el OK explícito del usuario al cerrar la fase.

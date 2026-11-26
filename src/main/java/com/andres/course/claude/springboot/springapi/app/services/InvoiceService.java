@@ -2,6 +2,7 @@ package com.andres.course.claude.springboot.springapi.app.services;
 
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceDto;
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -35,4 +36,7 @@ public interface InvoiceService {
 
     /** Elimina la factura y sus líneas. @throws com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException (404) */
     void delete(Long id);
+
+    /** Estadísticas de facturación del resumen: totales, por estado, últimos 12 meses y top 5 clientes. */
+    InvoiceStatsDto stats();
 }

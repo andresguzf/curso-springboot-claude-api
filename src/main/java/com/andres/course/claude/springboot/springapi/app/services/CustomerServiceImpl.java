@@ -3,7 +3,6 @@ package com.andres.course.claude.springboot.springapi.app.services;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerDto;
 import com.andres.course.claude.springboot.springapi.app.dto.CustomerFilter;
 import com.andres.course.claude.springboot.springapi.app.exceptions.DuplicateResourceException;
-import com.andres.course.claude.springboot.springapi.app.exceptions.OperationNotAllowedException;
 import com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException;
 import com.andres.course.claude.springboot.springapi.app.mappers.CustomerMapper;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -89,15 +89,13 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional
     public void delete(Long id) {
+        // Borrado lógico (spec 11): el cliente y sus facturas reciben la misma deleted_at en la misma
+        // transacción; nada se borra de la base y las líneas se quedan con su factura. Desde aquí
+        // @SQLRestriction los excluye de toda consulta (un cliente ya eliminado da 404).
         Customer customer = getOrThrow(id);
-        // La FK de invoices no tiene ON DELETE: sin esta regla, la base rechazaría el borrado con un
-        // error genérico. Así el 409 explica el motivo.
-        long invoices = invoiceRepository.countByCustomerId(id);
-        if (invoices > 0) {
-            throw new OperationNotAllowedException(
-                    "No se puede eliminar el cliente: tiene " + invoices + " factura(s)");
-        }
-        customerRepository.delete(customer);
+        LocalDateTime now = LocalDateTime.now();
+        invoiceRepository.softDeleteByCustomerId(id, now);
+        customer.setDeletedAt(now);
     }
 
     // Un rango con "desde" posterior a "hasta" no devolvería nada: se avisa con un 400.

@@ -8,12 +8,19 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Cliente. Borrado lógico (spec 11): eliminar un cliente le asigna deleted_at (y a sus facturas) y
+ * @SQLRestriction lo excluye de toda consulta de Hibernate (repositorios, Specifications, JPQL).
+ * El SQL nativo y data.sql no aplican el filtro.
+ */
 @Entity
 @Table(name = "customers")
+@SQLRestriction("deleted_at IS NULL")
 public class Customer {
 
     @Id
@@ -26,7 +33,10 @@ public class Customer {
     @Column(name = "last_name", nullable = false, length = 80)
     private String lastName;
 
-    @Column(nullable = false, unique = true, length = 150)
+    // Único solo entre clientes no eliminados: lo garantiza el índice parcial customers_email_active_key
+    // (migración en Supabase y data.sql en desarrollo). Sin unique = true: JPA no expresa un índice
+    // parcial y ddl-auto=update volvería a crear la restricción sobre todos los clientes.
+    @Column(nullable = false, length = 150)
     private String email;
 
     private String phone;
@@ -48,6 +58,10 @@ public class Customer {
 
     @Column(name = "update_at")
     private LocalDateTime updatedAt;
+
+    // Borrado lógico: null mientras el cliente no se haya eliminado.
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public Customer() {
     }
@@ -150,5 +164,13 @@ public class Customer {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

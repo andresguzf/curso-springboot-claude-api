@@ -21,6 +21,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,6 +35,10 @@ import java.util.List;
  * (ddl-auto=validate) lo acepte y el de desarrollo (update) no cree duplicados.
  *
  * Los importes (subtotal, tax, total) los calcula el service a partir de las líneas.
+ *
+ * Borrado lógico (spec 11): al eliminar su cliente, la factura recibe deleted_at y @SQLRestriction la
+ * excluye de toda consulta de Hibernate. Eliminar una factura sola sigue siendo físico (por eso no se
+ * usa @SoftDelete, que volvería lógico todo delete).
  */
 @Entity
 @Table(name = "invoices",
@@ -43,6 +48,7 @@ import java.util.List;
 @Check(name = "invoices_subtotal_check", constraints = "subtotal >= 0")
 @Check(name = "invoices_tax_check", constraints = "tax >= 0")
 @Check(name = "invoices_total_check", constraints = "total >= 0")
+@SQLRestriction("deleted_at IS NULL")
 public class Invoice {
 
     @Id
@@ -94,6 +100,10 @@ public class Invoice {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // Borrado lógico (con su cliente): null mientras no se haya eliminado.
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public Invoice() {
     }
@@ -224,5 +234,13 @@ public class Invoice {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

@@ -30,5 +30,6 @@ public interface CustomerService {
 
     CustomerDto update(Long id, CustomerDto dto);
 
+    /** Borrado lógico del cliente y de sus facturas (deleted_at). @throws com.andres.course.claude.springboot.springapi.app.exceptions.ResourceNotFoundException (404) */
     void delete(Long id);
 }
