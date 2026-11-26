@@ -24,7 +24,7 @@ Como en las specs 10 y 11, las pruebas en el navegador se hacen con el backend c
   - Verificación: `npm run build && npm run lint`; cálculo de los atajos con Node
   - Commit: "Agrega los filtros del resumen en la URL"
 
-- [ ] **L-03** Barra de filtros del resumen
+- [x] **L-03** Barra de filtros del resumen
   - Depende de: L-02
   - Cubre: RF-12-05, RF-12-06, RNF-12-03
   - Repo: `4-react`

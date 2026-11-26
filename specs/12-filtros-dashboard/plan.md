@@ -50,6 +50,8 @@ Decisión: **Criteria en un fragmento** y no `@Query` con `(:customerId is null 
 | `BillingSection` | Recibe los filtros: texto de qué se ve, ranking oculto con cliente, estado vacío con filtros («No hay facturas con estos filtros» + «Limpiar filtros»). |
 | `BalanceBar`, `MonthlyChart`, `StatusChart`, `TopCustomers` | Prop `filters` para armar los enlaces con `toQuery({ status, customerId, issuedFrom, issuedTo })`; `MonthlyChart` acota el mes al rango (`max(monthStart, issuedFrom)` / `min(monthEnd, issuedTo)`), muestra todos los meses que devuelve la API (en móvil, los 6 últimos solo si no hay rango) y titula con el rango. |
 
+Implementado en L-03: `invoicesListPath(filters, params)` (en `lib/statsRanges.ts`) arma los enlaces al listado con los filtros; la frase bajo el título (`aria-live="polite"`) describe qué se ve; el atajo activo se marca con `aria-pressed` y las variantes `aria-pressed:` de Tailwind (una clase condicional perdía contra `bg-surface` de la variante base por el orden del CSS); «hoy» se lee una vez con el inicializador de `useState`. Verificado en el navegador: atajo, autocompletado, chip, recarga, atrás, enlace «Pagado» con filtros, cliente sin facturas (estado vacío), limpiar, 375 px y tema oscuro; Lighthouse de accesibilidad 100 con y sin filtros.
+
 ## 4. Decisiones
 
 - **Filtros en la URL** (constitución §2): compartibles y con historial, como los listados.
