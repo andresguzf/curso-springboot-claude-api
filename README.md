@@ -332,7 +332,7 @@ Lectura: roles `USER` y `ADMIN`. Escritura: solo `ADMIN`.
 | Método | Ruta | Descripción | Respuesta |
 |---|---|---|---|
 | `GET` | `/api/invoices` | Lista paginada de facturas (con cliente y líneas), búsqueda y filtros | 200, 400 |
-| `GET` | `/api/invoices/stats` | Estadísticas para el resumen (totales, por estado, por mes, top clientes) | 200 |
+| `GET` | `/api/invoices/stats` | Estadísticas para el resumen (totales, por estado, por mes, top clientes), con filtros de cliente y fechas | 200, 400 |
 | `GET` | `/api/invoices/{id}` | Obtiene una factura con sus líneas | 200, 404 |
 | `POST` | `/api/invoices` | Crea una factura | 201 + `Location`, 400, 404 (cliente), 409 |
 | `PUT` | `/api/invoices/{id}` | Actualiza fechas, estado, notas y líneas | 200, 400, 404 |
@@ -408,7 +408,27 @@ Datos del resumen del dashboard, calculados en la base (USER y ADMIN). Las anula
 ```
 
 - `billed` = pagadas + pendientes; `overdue` = pendientes con `dueDate` anterior a hoy (zona del servidor).
-- `monthly`: últimos 12 meses por mes de emisión, del más antiguo al actual; un mes sin facturas va en 0.
+- `monthly`: por mes de emisión, del más antiguo al más nuevo; un mes sin facturas va en 0.
+
+Filtros opcionales y combinables (spec 12); todos los datos de la respuesta los respetan:
+
+| Parámetro | Ejemplo | Descripción |
+|---|---|---|
+| `customerId` | `3` | Solo las facturas de ese cliente (uno inexistente o eliminado deja todo en cero) |
+| `issuedFrom`, `issuedTo` | `2026-01-01` | Rango de fecha de emisión (inclusivo) |
+
+| Filtro de fechas | Meses en `monthly` |
+|---|---|
+| Ninguno | los 12 hasta el actual |
+| Solo `issuedFrom` | de ese mes al actual |
+| Solo `issuedTo` | los 12 que terminan en ese mes |
+| Ambos | de un mes al otro |
+
+400 si `issuedFrom` es posterior a `issuedTo`, si la serie abarca más de 24 meses o si un parámetro tiene un formato inválido (por campo, como en los listados).
+
+```bash
+curl -b cookies.txt "http://localhost:8080/api/invoices/stats?customerId=3&issuedFrom=2026-01-01&issuedTo=2026-06-30"
+```
 
 ### Borrado lógico de clientes
 
@@ -543,4 +563,4 @@ El test de contexto (`ApplicationTests`) necesita PostgreSQL disponible. El rest
 
 ## Especificaciones (SDD)
 
-Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel, la [`10-facturacion`](specs/10-facturacion/spec.md) agrega las facturas de cada cliente (backend y frontend) sobre las tablas creadas en Supabase, y la [`11-dashboard-borrado-logico`](specs/11-dashboard-borrado-logico/spec.md) suma las estadísticas para el dashboard y el borrado lógico de clientes. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).
+Los cambios para el frontend React (paginación, filtros, fechas de auditoría y protección del último administrador) se especificaron con desarrollo guiado por especificaciones en [`specs/`](specs/): la [constitución](specs/constitution.md) del backend y la spec [`01-paginacion-filtros-admin`](specs/01-paginacion-filtros-admin/spec.md), con su plan técnico y sus tareas. La spec [`09-docker-despliegue`](specs/09-docker-despliegue/spec.md) dockeriza el backend y lo deja listo para Render y Vercel, la [`10-facturacion`](specs/10-facturacion/spec.md) agrega las facturas de cada cliente (backend y frontend) sobre las tablas creadas en Supabase, la [`11-dashboard-borrado-logico`](specs/11-dashboard-borrado-logico/spec.md) suma las estadísticas para el dashboard y el borrado lógico de clientes, y la [`12-filtros-dashboard`](specs/12-filtros-dashboard/spec.md) los filtros de cliente y fechas de esas estadísticas. Las specs del frontend (fases 02 a 08) y el índice de todas las fases están en el [repositorio del frontend](https://github.com/andresguzf/curso-springboot-claude-react/blob/main/specs/README.md).

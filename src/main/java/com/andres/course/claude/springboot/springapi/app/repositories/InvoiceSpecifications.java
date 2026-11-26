@@ -1,6 +1,7 @@
 package com.andres.course.claude.springboot.springapi.app.repositories;
 
 import com.andres.course.claude.springboot.springapi.app.dto.InvoiceFilter;
+import com.andres.course.claude.springboot.springapi.app.dto.InvoiceStatsFilter;
 import com.andres.course.claude.springboot.springapi.app.models.Customer;
 import com.andres.course.claude.springboot.springapi.app.models.Invoice;
 import com.andres.course.claude.springboot.springapi.app.models.InvoiceStatus;
@@ -76,5 +77,11 @@ public final class InvoiceSpecifications {
                 hasCustomer(f.customerId()),
                 hasStatus(f.status()),
                 issuedBetween(f.issuedFrom(), f.issuedTo()));
+    }
+
+    /** Filtro de las estadísticas del resumen (spec 12): las mismas condiciones que el listado. */
+    public static Specification<Invoice> forStats(InvoiceStatsFilter filter) {
+        InvoiceStatsFilter f = filter == null ? InvoiceStatsFilter.empty() : filter;
+        return Specification.allOf(hasCustomer(f.customerId()), issuedBetween(f.issuedFrom(), f.issuedTo()));
     }
 }
