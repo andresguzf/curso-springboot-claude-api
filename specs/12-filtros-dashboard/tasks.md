@@ -15,7 +15,7 @@ Como en las specs 10 y 11, las pruebas en el navegador se hacen con el backend c
   - Verificación: `./mvnw test`; curl contra la base local con `customerId`, con rango y con ambos, comparado con SQL directo
   - Commit: "Agrega los filtros de cliente y fechas a las estadísticas de facturación"
 
-- [ ] **L-02** Filtros del resumen en la URL y consulta filtrada
+- [x] **L-02** Filtros del resumen en la URL y consulta filtrada
   - Depende de: L-01
   - Cubre: RF-12-04
   - Repo: `4-react`
