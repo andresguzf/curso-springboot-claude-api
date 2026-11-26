@@ -68,7 +68,7 @@ Como en la spec 10, las pruebas que escriben datos se hacen contra el PostgreSQL
   - Archivos: `../3-spring-api/specs/11-dashboard-borrado-logico/plan.md` (§3: la propuesta aprobada)
   - Commit: "Documenta la dirección visual del dashboard de facturación"
 
-- [ ] **K-08** Dashboard de facturación con gráficos
+- [x] **K-08** Dashboard de facturación con gráficos
   - Depende de: K-07
   - Cubre: RF-11-10, RNF-11-03, RNF-11-04, RNF-11-05
   - Repo: `4-react`

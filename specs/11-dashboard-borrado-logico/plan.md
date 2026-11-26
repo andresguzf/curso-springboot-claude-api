@@ -154,6 +154,14 @@ Los colores se pasan a Recharts como `var(--color-…)`, así cambian solos con 
 | Numeración decorativa (01 / 02) | Solo en el ranking de clientes, que sí es un orden |
 | Metadatos con «·» | Separadores de leyenda como celdas, no puntos medios |
 
+**Implementación (K-08)**: `components/dashboard/{BalanceBar,MonthlyChart,StatusChart,TopCustomers,BillingSection}.tsx`; la cartera pasó de lista a una fila de cifras (`StatTile`). Detalles:
+
+- «Vencido» enlaza a `/invoices?status=PENDING&sort=dueDate,asc` (no hay filtro de vencidas; ordenadas por vencimiento, las vencidas quedan primero).
+- Recharts con `accessibilityLayer={false}` y `Pie rootTabIndex={-1}`: sin eso deja el SVG enfocable dentro de un contenedor `aria-hidden` (Lighthouse `aria-hidden-focus`). La alternativa accesible son las tablas `sr-only` y las leyendas-enlace, cuyo nombre accesible empieza con el texto visible («5 pendientes, $351.050»).
+- Eje con `formatCompactMoney` («$464 mil», con espacio no separable: Recharts parte las etiquetas en los espacios); meses con `formatMonthShort` / `formatMonthLong`; un clic en una barra abre el listado de ese mes (`monthRange`).
+- Recharts y sus dependencias en el chunk `charts` (434 kB, 122 kB comprimido), solo en la precarga del `import()` del resumen.
+- Verificado: datos iguales a `/api/invoices/stats`, rayado de vencidas, tema claro y oscuro, 375 px sin scroll (6 meses), enlaces del balance y de las barras, USER sin «Usuarios»; Lighthouse accesibilidad 100.
+
 Primera versión revisada: las 4 tarjetas de KPI que había pensado primero (facturado, pagado, pendiente, vencido) eran exactamente el default de la tabla de arriba; se cambiaron por la barra de balance, que además muestra la proporción, que es la información útil.
 
 ## 4. Decisiones
